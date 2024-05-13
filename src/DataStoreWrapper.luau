@@ -6,6 +6,7 @@
     fresh save.
 ]]
 local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
 local Config = require(script.Parent.Config)
 
 local DataStoreWrapper = {}
@@ -46,11 +47,18 @@ function DataStoreWrapper.new(
         getDataStoreError: string?
     }?
     function self.getDataStore(): DataStore?
+        if cacheResult then
+            return cacheResult.dataStore
+        end
+        -- Don't connect to datastores in test environment
         if self.forceUseFallback then
             return nil
         end
-        if cacheResult then
-            return cacheResult.dataStore
+        -- No need to attempt to connect to data stores if we're testing from an
+        -- unsaved roblox file
+        if game.GameId == 0
+        and RunService:IsStudio() then
+            return nil
         end
         local dataStore
         local success, err = pcall(function()
@@ -68,6 +76,7 @@ function DataStoreWrapper.new(
             cacheResult = {
                 getDataStoreError = err,
             }
+            warn(err)
         end
         return dataStore
     end
