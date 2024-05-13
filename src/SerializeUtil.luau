@@ -148,4 +148,12 @@ function SerializeUtil.ValueIsStorable(value: unknown): (boolean, string?)
     return true
 end
 
+function SerializeUtil.DeserializeStoreable(storeable: any)
+    return storeable
+end
+
+function SerializeUtil.SerializeToStoreable(data: any)
+    return data
+end
+
 return SerializeUtil

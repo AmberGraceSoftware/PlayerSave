@@ -5,10 +5,55 @@ local Config = require(script.Parent.Config)
 local SerializeUtil = require(script.Parent.SerializeUtil)
 local DataStoreWrapper = require(script.DataStoreWrapper)
 local Registry = require(script.Parent.Registry)
+local SaveFormat = require(script.SaveFormat)
 export type Registry = Registry.Registry
 export type DataStoreWrapper = DataStoreWrapper.DataStoreWrapper
 
 local PlayerSaveServer = {}
+
+local function processStoredValue(storedValue: unknown): (boolean, any)
+    if not storedValue then
+        -- Case 1: Encountered a new save
+        return true, nil
+    elseif SaveFormat.IsSavedValueInPlayerSaveFormat(storedValue) then
+        -- Case 2: Encountered a save managed by PlayerSave
+        local success, returnValueOrErr = pcall(function()
+            return SaveFormat.DeserializeStoredValue(storedValue)
+        end)
+        return success, returnValueOrErr
+    elseif Config.MigrateLegacyData then
+        -- Case 3: Encountered legacy data; run MigrateLegacyData config
+        local success, migrationOrErr: any = pcall(function()
+            return Config.MigrateLegacyData(storedValue)
+        end)
+        if not success then
+            return false, "Data migration failure: " .. migrationOrErr
+        end
+        local storableSuccess, storableErr
+            = SerializeUtil.ValueIsStorable(migrationOrErr)
+        if storableSuccess then
+            return true, storedValue
+        end
+        return false, "Data migration failure: " .. (
+            storableErr
+            or "result of callback Config.MigrateLegacyData() is not a "
+                .. "storeable object! Must be a table with string and number "
+                .. "keys."
+        )
+    else
+        -- Case 4: Encountered legacy data; no MigrateLegacyData callback was
+        -- specified.
+        if typeof(storedValue) ~= "table" then
+            return false, "Saved value is not a table!"
+        end
+        local storableSuccess, storableErr
+            = SerializeUtil.ValueIsStorable(storedValue)
+        if storableSuccess then
+            return true, storedValue
+        end
+        return false, storableErr
+    end
+end
 
 function PlayerSaveServer.Start(
     registry: Registry,
@@ -27,36 +72,13 @@ function PlayerSaveServer.Start(
         local wasSafelyLoaded
         local dataToInitialize: {[string]: any}? = nil
         if success then
-            if not loadedDataOrErr then
-                wasSafelyLoaded = true
-            elseif loadedDataOrErr.PlayerSaveLibraryVersion
-            and loadedDataOrErr.SaveData then
-                dataToInitialize = loadedDataOrErr.SaveData
-                wasSafelyLoaded = true
-            elseif Config.MigrateLegacyData then
-                local migration: any
-                local migrationScucess, migrationErr = pcall(function()
-                    migration = Config.MigrateLegacyData(loadedDataOrErr)
-                end)
-                if not migrationScucess then
-                    warn("Data migration failure: " .. migrationErr)
-                    wasSafelyLoaded = false
-                else
-                    local storableSuccess, storableErr
-                        = SerializeUtil.ValueIsStorable(migration)
-                    if storableSuccess then
-                        wasSafelyLoaded = true
-                        dataToInitialize = migration
-                    else
-                        warn("Data migration failure: "
-                            .. (storableErr or "Config.MigrateLegacyData() "
-                                .. "result is not storeable!"))
-                        wasSafelyLoaded = false
-                    end
-                end
+            local processSuccess, processedDataOrErr =
+                processStoredValue(loadedDataOrErr)
+            wasSafelyLoaded = processSuccess
+            if processSuccess then
+                dataToInitialize = processedDataOrErr
             else
-                wasSafelyLoaded = false
-                dataToInitialize = loadedDataOrErr
+                warn(processedDataOrErr)
             end
         else
             wasSafelyLoaded = false

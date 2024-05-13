@@ -37,7 +37,7 @@ function Registry.__index.OpenSave(
     self: Registry,
     player: Player
 ): Save
-    local save = Save.new()
+    local save = Save.new(player)
     self._map[player] = save
     task.defer(function()
         self._onRegistryInsertOrHeartbeat:Fire()

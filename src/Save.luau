@@ -11,12 +11,13 @@ export type KeyPath = SerializeUtil.KeyPath
 local Save = {}
 Save.__index = {}
 
-function Save.new()
+function Save.new(player: Player)
     local self = {}
     self._safeToSave = true
     self._loaded = false
     self._closed = false
     self._isSaving = false
+    self._player = player
     self._data = {}
     self._listenerTree = ListenerTree.new()
 
@@ -24,7 +25,7 @@ function Save.new()
     return self
 end
 
-export type Save = typeof(Save.new())
+export type Save = typeof(Save.new(nil :: any))
 
 function Save.__index.PlayerIsStillInGame(self: Save)
     return self._loaded and not self._closed
