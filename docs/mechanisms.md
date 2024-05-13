@@ -1,4 +1,4 @@
-# PlayerSave Mechanism
+# Mechanisms
 
 PlayerSave's architecture contains a number of configurable mechanisms designed
 for fault tolerance in Roblox experiences.
@@ -11,7 +11,7 @@ for fault tolerance in Roblox experiences.
 - [Place Teleport Tolerance](#place-teleport-tolerance)
 - [BindToClose](#bind-to-close)
 - [Trade Transactions](#trade-transactions)
-- [Legacy Data Migration](#legacy-data-migration)
+- [Data Migration](#data-migration)
 - [Logging](#logging)
 
 :::info

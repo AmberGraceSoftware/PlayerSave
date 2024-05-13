@@ -116,7 +116,8 @@ local function captureSourceFileStrings(rootSourceMaps: {SourceMap})
     local sourceStrings = table.create(#allSourceFiles * 2)
     for _, sourceMap in allSourceFiles do
         table.insert(sourceStrings, sourceMap.robloxPath)
-        table.insert(sourceStrings, fs.readFile(sourceMap.sourcePath))
+        table.insert(sourceStrings,
+            (fs.readFile(sourceMap.sourcePath):gsub("\n+$","")))
     end
 
     return sourceStrings
