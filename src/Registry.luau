@@ -12,20 +12,26 @@ function Registry.new()
     local self = {}
     self._map = {} :: {[Player]: Save}
     self._onRegistryInsertOrHeartbeat = Instance.new("BindableEvent")
-    self._heartbeatConn = RunService.Heartbeat:Connect(function()
-        self._onRegistryInsertOrHeartbeat:Fire()
-    end)
+    self._heartbeatConn = nil :: RBXScriptConnection?
 
     setmetatable(self, Registry)
     return self
 end
 
-function Registry:Destroy()
-    self._heartbeatConn:Disconnect()
-    self._onRegistryInsertOrHeartbeat:Destroy()
+export type Registry = typeof(Registry.new())
+
+function Registry.__index.StartHeartbeatLoop(self: Registry)
+    RunService.Heartbeat:Connect(function()
+        self._onRegistryInsertOrHeartbeat:Fire()
+    end)
 end
 
-export type Registry = typeof(Registry.new())
+function Registry.__index.StopHeartbeatLoop(self: Registry)
+    if self._heartbeatConn then
+        self._heartbeatConn:Disconnect()
+        self._heartbeatConn = nil
+    end
+end
 
 function Registry.__index.OpenSave(
     self: Registry,

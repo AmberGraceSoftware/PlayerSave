@@ -26,17 +26,28 @@
 
 local LIBRARY_VERSION = "0.0.1"
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Save = require(script.Save)
 local Config = require(script.Config)
 local DataStoreWrapper = require(script.DataStoreWrapper)
-local SerializeUtil = require(script.SerializeUtil)
+local PlayerSaveClient = require(script.PlayerSaveClient)
+local PlayerSaveServer = require(script.PlayerSaveServer)
 local Registry = require(script.Registry)
 export type KeyPath = Save.KeyPath
 export type Save = Save.Save
 export type Config = Config.Config
 export type ConfigPartial = Config.ConfigPartial
+
+local function deepMerge(table1: {[string]: any}, table2: {[string]: any})
+    for k, v in table2 do
+        if typeof(v) == "table"
+        and typeof(table1[k]) == "table" then
+            deepMerge(table1[k], v)
+        else
+            table1[k] = v
+        end
+    end
+end
 
 local PlayerSave = {}
 
@@ -46,96 +57,20 @@ function PlayerSave.Init(config: ConfigPartial?)
     if initialized then
         error("PlayerSave.Init has already been called!")
     end
-    if not RunService:IsServer() then
-        error("PlayerSave.Init can only be called on the server!")
-    end
-
+    
     -- Perform deep merge of config keys
-    local function deepMerge(table1: {[string]: any}, table2: {[string]: any})
-        for k, v in table2 do
-            if typeof(v) == "table"
-            and typeof(table1[k]) == "table" then
-                deepMerge(table1[k], v)
-            else
-                table1[k] = v
-            end
-        end
-    end
     if config then
         deepMerge(Config, config)
     end
 
-    local wrapper = DataStoreWrapper.new()
-    Players.PlayerAdded:Connect(function(player)
-        local save = registry:OpenSave(player)
-        -- (Blocking) Request initial data
-        local success, loadedDataOrErr = wrapper:GetAsync(player)
-        if not save:PlayerIsStillInGame() then
-            return
-        end
-
-        local wasSafelyLoaded
-        local dataToInitialize: {[string]: any}? = nil
-        if success then
-            if not loadedDataOrErr then
-                wasSafelyLoaded = true
-            elseif loadedDataOrErr.PlayerSaveLibraryVersion
-            and loadedDataOrErr.SaveData then
-                dataToInitialize = loadedDataOrErr.SaveData
-                wasSafelyLoaded = true
-            elseif Config.MigrateLegacyData then
-                local migration: any
-                local migrationScucess, migrationErr = pcall(function()
-                    migration = Config.MigrateLegacyData(loadedDataOrErr)
-                end)
-                if not migrationScucess then
-                    warn("Data migration failure: " .. migrationErr)
-                    wasSafelyLoaded = false
-                else
-                    local storableSuccess, storableErr
-                        = SerializeUtil.ValueIsStorable(migration)
-                    if storableSuccess then
-                        wasSafelyLoaded = true
-                        dataToInitialize = migration
-                    else
-                        warn("Data migration failure: "
-                            .. (storableErr or "Config.MigrateLegacyData() "
-                                .. "result is not storeable!"))
-                        wasSafelyLoaded = false
-                    end
-                end
-            else
-                wasSafelyLoaded = false
-                dataToInitialize = loadedDataOrErr
-            end
-        else
-            wasSafelyLoaded = false
-            warn(loadedDataOrErr)
-        end
-        save._safeToSave = wasSafelyLoaded
-        save._loaded = true
-        
-        if dataToInitialize then
-            save._data = dataToInitialize
-            if initialized then
-                save._listenerTree:FireAllListeners(save._data)
-            end
-        end
-    end)
-    Players.PlayerRemoving:Connect(function(player)
-        task.defer(function()
-            local save = registry:CloseSave(player)
-            if not save then
-                return
-            end
-            if save:IsSafeToSave() then
-                wrapper:SetAsync(player, {
-                    PlayerSaveLibraryVersion = LIBRARY_VERSION,
-                    SaveData = save._data,
-                })
-            end
-        end)
-    end)
+    -- Start server/client
+    registry:StartHeartbeatLoop()
+    local dataStoreWrapper = DataStoreWrapper.new()
+    if RunService:IsServer() then
+        PlayerSaveServer.Start(registry, dataStoreWrapper, LIBRARY_VERSION)
+    else
+        PlayerSaveClient.Start(registry)
+    end
 end
 
 function PlayerSave.Get(player: Player): Save?
