@@ -116,7 +116,7 @@ function DataStoreWrapper.GetAsync(player: Player): (boolean, any)
             return false, err
         end
     end
-    local returnValue: string = "usingMockDataStore"
+    local returnValue: any?
     if dataStore then
         local success, err = pcall(function()
             returnValue = dataStore:GetAsync(
