@@ -24,10 +24,14 @@
     For more information, see the [Usage Guide](../docs/intro)
 ]=]
 
+local LIBRARY_VERSION = "0.0.1"
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Save = require(script.Save)
 local Config = require(script.Config)
+local DataStoreWrapper = require(script.DataStoreWrapper)
+local SerializeUtil = require(script.SerializeUtil)
 export type KeyPath = Save.KeyPath
 export type Save = Save.Save
 export type Config = Config.Config
@@ -56,19 +60,84 @@ function PlayerSave.Init(config: ConfigPartial?)
             end
         end
     end
-    deepMerge(Config, config :: any)
+    if config then
+        deepMerge(Config, config)
+    end
 
+    local wrapper = DataStoreWrapper.new()
     Players.PlayerAdded:Connect(function(player)
-        registry[player] = Save.new()
+        local save = Save.new()
+        registry[player] = save
+
+        -- (Blocking) Request initial data
+        local success, loadedDataOrErr = wrapper:GetAsync(player)
+        if save._closed then
+            return
+        end
+        
+        local wasSafelyLoaded
+        local dataToInitialize: {[string]: any}? = nil
+        if success then
+            if not loadedDataOrErr then
+                wasSafelyLoaded = true
+            elseif loadedDataOrErr.PlayerSaveLibraryVersion
+            and loadedDataOrErr.SaveData then
+                dataToInitialize = loadedDataOrErr.SaveData
+                wasSafelyLoaded = true
+            elseif Config.MigrateLegacyData then
+                local migration: any
+                local migrationScucess, migrationErr = pcall(function()
+                    migration = Config.MigrateLegacyData(loadedDataOrErr)
+                end)
+                if not migrationScucess then
+                    warn("Data migration failure: " .. migrationErr)
+                    wasSafelyLoaded = false
+                else
+                    local storableSuccess, storableErr
+                        = SerializeUtil.ValueIsStorable(migration)
+                    if storableSuccess then
+                        wasSafelyLoaded = true
+                        dataToInitialize = migration
+                    else
+                        warn("Data migration failure: "
+                            .. (storableErr or "Config.MigrateLegacyData() "
+                                .. "result is not storeable!"))
+                        wasSafelyLoaded = false
+                    end
+                end
+            else
+                wasSafelyLoaded = false
+                dataToInitialize = loadedDataOrErr
+            end
+        else
+            wasSafelyLoaded = false
+            warn(loadedDataOrErr)
+        end
+        save._safeToSave = wasSafelyLoaded
+        save._loaded = true
+        
+        if dataToInitialize then
+            save._data = dataToInitialize
+            if initialized then
+                save._listenerTree:FireAllListeners(save._data)
+            end
+        end
     end)
     Players.PlayerRemoving:Connect(function(player)
         task.defer(function()
-            local store = registry[player]
-            if not store then
+            local save = registry[player]
+            if not save then
                 return
             end
             registry[player] = nil
-            store._closed = true
+            save._closed = true
+
+            if save:IsSafeToSave() then
+                wrapper:SetAsync(player, {
+                    PlayerSaveLibraryVersion = LIBRARY_VERSION,
+                    SaveData = save._data,
+                })
+            end
         end)
     end)
 end
@@ -78,14 +147,14 @@ function PlayerSave.Get(player: Player): Save?
 end
 
 function PlayerSave.GetLoaded(player: Player): Save?
-    local store = PlayerSave.Get(player)
-    if not store then
+    local save = PlayerSave.Get(player)
+    if not save then
         return nil
     end
-    if not store:IsLoaded() then
+    if not save:IsLoaded() then
         return nil
     end
-    return store
+    return save
 end
  
 function PlayerSave.WaitFor(
@@ -95,9 +164,9 @@ function PlayerSave.WaitFor(
     local expires = if timeout then os.clock() + timeout else math.huge
     while os.clock() < expires
     and player.Parent == Players do
-        local store = PlayerSave.Get(player)
-        if store then
-            return store
+        local save = PlayerSave.Get(player)
+        if save then
+            return save
         end
         RunService.Heartbeat:Wait()
     end
@@ -109,8 +178,8 @@ function PlayerSave.WaitForLoaded(
     timeout: number?
 ): Save?
     local startTime = os.clock()
-    local store = PlayerSave.WaitFor(player, timeout)
-    if not store then
+    local save = PlayerSave.WaitFor(player, timeout)
+    if not save then
         return nil
     end
     local remaining = if timeout
@@ -119,8 +188,8 @@ function PlayerSave.WaitForLoaded(
     if remaining < 0 then
         return nil
     end
-    if store:WaitUntilLoaded(remaining) then
-        return store
+    if save:WaitUntilLoaded(remaining) then
+        return save
     end
     return nil
 end

@@ -20,7 +20,6 @@ function Save.new()
     self._listenerTree = ListenerTree.new()
 
     setmetatable(self, Save)
-    table.freeze(self)
     return self
 end
 
