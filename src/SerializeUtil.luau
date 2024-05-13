@@ -8,24 +8,41 @@ export type KeyPath = string | {string | number}
 
 local SerializeUtil = {}
 
-function SerializeUtil.DeepCopy(value: any)
-    if typeof(value) == "table" then
-        local newTable = table.clone(value)
-        for k,v in newTable do
-            if typeof(v) == "table" then
-                
-            end
-        end
-    else
-
-    end
-end
-
 function SerializeUtil.KeyListToString(keyList: KeyList): string
     local output: {string} = {}
     for _, key in keyList do
         if typeof(key) == "string" then
-
+            if key:match("[^a-zA-Z0-9_]")
+            or key:sub(1, 1):match("[^a-zA-Z]") then
+                local open, close
+                if not key:find('"') then
+                    open = '"'
+                    close = '"'
+                elseif not key:find("'") then
+                    open = "'"
+                    close = "'"
+                else
+                    local repCount = 0
+                    repeat 
+                        local rep = string.rep("=", repCount)
+                        if not key:find("]" .. rep .. "]", nil, true) then
+                            open = "]" .. rep .. "]"
+                            close = "[" .. rep .. "["
+                            break
+                        end
+                        repCount += 1
+                    until repCount == 5
+                    open = '"'
+                    close = '"'
+                end
+                table.insert(output, "[")
+                table.insert(output, open)
+                table.insert(output, tostring(key))
+                table.insert(output, close)
+                table.insert(output, "]")
+            end
+            table.insert(output, ".")
+            table.insert(output, key)
         else
             table.insert(output, "[")
             table.insert(output, tostring(key))

@@ -131,7 +131,7 @@ local function addAllChildListeners(
     if not node.children then
         return
     end
-    for key, childNode in node.children do
+    for _, childNode in node.children do
         if childNode.listenerSet then
             for listener in childNode.listenerSet do
                 table.insert(listOutput, listener)
