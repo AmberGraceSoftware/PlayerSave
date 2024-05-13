@@ -2,14 +2,15 @@
 
 return function()
     local DataStoreWrapper = require(game.ReplicatedStorage.Packages.PlayerSave.DataStoreWrapper)
+    local wrapper = DataStoreWrapper.new(nil, true)
     local mockPlayer: Player = {UserId = -12345} :: any
     it("allows mock GetAsync and SetAsync requests to be performed", function()
         local isYielding = true
         local getSuccess, initDataOrErr
         local setSuccess, versionOrErr
         task.spawn(function()
-            getSuccess, initDataOrErr = DataStoreWrapper.GetAsync(mockPlayer)
-            setSuccess, versionOrErr = DataStoreWrapper.SetAsync(mockPlayer, {})
+            getSuccess, initDataOrErr = wrapper:GetAsync(mockPlayer)
+            setSuccess, versionOrErr = wrapper:SetAsync(mockPlayer, {})
             isYielding = false
         end)
         expect(isYielding).to.equal(false)

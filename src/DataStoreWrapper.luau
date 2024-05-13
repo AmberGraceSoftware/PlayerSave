@@ -9,16 +9,46 @@ local DataStoreService = game:GetService("DataStoreService")
 local Config = require(script.Parent.Config)
 
 local DataStoreWrapper = {}
+DataStoreWrapper.__index = {}
 
--- Make initial GetDataStore() call once, log any errors, and cache the result
--- for all future calls
-local getDataStore: () -> DataStore?
-do
+export type FallbackImplementation = {
+    GetAsync: (
+        key: string,
+        options: DataStoreGetOptions?
+    ) -> any?,
+    SetAsync: (
+        key: string,
+        value: any,
+        userIds: {number}?,
+        options: DataStoreSetOptions?
+    ) -> string
+}
+
+local mockDataStoreFallback: FallbackImplementation = {
+    GetAsync = function()
+        return nil
+    end,
+    SetAsync = function()
+        return "usingMockDataStore"
+    end
+}
+
+function DataStoreWrapper.new(
+    fallback: FallbackImplementation?,
+    forceUseFallback: boolean? -- Set to true to for unit testing environment.
+)
+    local self = {}
+    
+    -- Make initial GetDataStore() call once, log any errors, and cache the
+    -- result for all future calls
     local cacheResult: {
         dataStore: DataStore?,
         getDataStoreError: string?
     }?
-    getDataStore = function()
+    function self.getDataStore(): DataStore?
+        if self.forceUseFallback then
+            return nil
+        end
         if cacheResult then
             return cacheResult.dataStore
         end
@@ -41,7 +71,14 @@ do
         end
         return dataStore
     end
+    self.fallback = fallback or mockDataStoreFallback
+    self.forceUseFallback = forceUseFallback
+
+    setmetatable(self, DataStoreWrapper)
+    return self
 end
+
+export type DataStoreWrapper = typeof(DataStoreWrapper.new())
 
 local function getPlayerSaveKey(player: Player): (boolean, any)
     local playerSaveKey: string?
@@ -65,12 +102,12 @@ local function getPlayerSaveKey(player: Player): (boolean, any)
             .. err
     end
 end
-
-function DataStoreWrapper.SetAsync(
+function DataStoreWrapper.__index.SetAsync(
+    self: DataStoreWrapper,
     player: Player,
     data: any
 ): (boolean, string)
-    local dataStore = getDataStore()
+    local dataStore = self.getDataStore()
     local keySuccess, keyOrErr = getPlayerSaveKey(player)
     if not keySuccess then
         return false, keyOrErr
@@ -84,10 +121,22 @@ function DataStoreWrapper.SetAsync(
             return false, err
         end
     end
-    local newVersion: string = "usingMockDataStore"
+    local newVersion: string = ""
     if dataStore then
         local success, err = pcall(function()
             newVersion = dataStore:SetAsync(
+                keyOrErr,
+                data,
+                {player.UserId},
+                setOptions
+            )
+        end)
+        if not success then
+            return false, err
+        end
+    else
+        local success, err = pcall(function()
+            newVersion = self.fallback.SetAsync(
                 keyOrErr,
                 data,
                 {player.UserId},
@@ -101,8 +150,11 @@ function DataStoreWrapper.SetAsync(
     return true, newVersion
 end
 
-function DataStoreWrapper.GetAsync(player: Player): (boolean, any)
-    local dataStore = getDataStore()
+function DataStoreWrapper.__index.GetAsync(
+    self: DataStoreWrapper,
+    player: Player
+): (boolean, any)
+    local dataStore = self.getDataStore()
     local keySuccess, keyOrErr = getPlayerSaveKey(player)
     if not keySuccess then
         return false, keyOrErr
@@ -120,6 +172,16 @@ function DataStoreWrapper.GetAsync(player: Player): (boolean, any)
     if dataStore then
         local success, err = pcall(function()
             returnValue = dataStore:GetAsync(
+                keyOrErr,
+                getOptions :: DataStoreGetOptions
+            )
+        end)
+        if not success then
+            return false, err
+        end
+    else
+        local success, err = pcall(function()
+            returnValue = self.fallback.GetAsync(
                 keyOrErr,
                 getOptions :: DataStoreGetOptions
             )
