@@ -10,7 +10,7 @@ gitSourceBranch = "main"
 [docusaurus]
 url = "https://playersave.ambergracesoftware.com"
 baseUrl = "/"
-tagline = "A Library for Building Roblox User Interfaces"
+tagline = "Holistic library for storing, replicating, and observing player save data"
 
 [navbar]
 title = ""
