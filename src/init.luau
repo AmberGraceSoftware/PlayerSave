@@ -32,6 +32,7 @@ local Save = require(script.Save)
 local Config = require(script.Config)
 local DataStoreWrapper = require(script.DataStoreWrapper)
 local SerializeUtil = require(script.SerializeUtil)
+local Registry = require(script.Registry)
 export type KeyPath = Save.KeyPath
 export type Save = Save.Save
 export type Config = Config.Config
@@ -40,7 +41,7 @@ export type ConfigPartial = Config.ConfigPartial
 local PlayerSave = {}
 
 local initialized = false
-local registry: {[Player]: Save} = {}
+local registry = Registry.new()
 function PlayerSave.Init(config: ConfigPartial?)
     if initialized then
         error("PlayerSave.Init has already been called!")
@@ -66,15 +67,13 @@ function PlayerSave.Init(config: ConfigPartial?)
 
     local wrapper = DataStoreWrapper.new()
     Players.PlayerAdded:Connect(function(player)
-        local save = Save.new()
-        registry[player] = save
-
+        local save = registry:OpenSave(player)
         -- (Blocking) Request initial data
         local success, loadedDataOrErr = wrapper:GetAsync(player)
-        if save._closed then
+        if not save:PlayerIsStillInGame() then
             return
         end
-        
+
         local wasSafelyLoaded
         local dataToInitialize: {[string]: any}? = nil
         if success then
@@ -125,13 +124,10 @@ function PlayerSave.Init(config: ConfigPartial?)
     end)
     Players.PlayerRemoving:Connect(function(player)
         task.defer(function()
-            local save = registry[player]
+            local save = registry:CloseSave(player)
             if not save then
                 return
             end
-            registry[player] = nil
-            save._closed = true
-
             if save:IsSafeToSave() then
                 wrapper:SetAsync(player, {
                     PlayerSaveLibraryVersion = LIBRARY_VERSION,
@@ -143,7 +139,7 @@ function PlayerSave.Init(config: ConfigPartial?)
 end
 
 function PlayerSave.Get(player: Player): Save?
-    return registry[player]
+    return registry:Get(player)
 end
 
 function PlayerSave.GetLoaded(player: Player): Save?
@@ -161,16 +157,7 @@ function PlayerSave.WaitFor(
     player: Player,
     timeout: number?
 ): Save?
-    local expires = if timeout then os.clock() + timeout else math.huge
-    while os.clock() < expires
-    and player.Parent == Players do
-        local save = PlayerSave.Get(player)
-        if save then
-            return save
-        end
-        RunService.Heartbeat:Wait()
-    end
-    return nil
+    return registry:WaitFor(player, timeout)
 end
 
 function PlayerSave.WaitForLoaded(
