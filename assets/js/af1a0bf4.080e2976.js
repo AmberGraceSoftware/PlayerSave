@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[328],{63891:e=>{e.exports=JSON.parse('{"sourceUrl":"https://github.com/AmberGraceSoftware/PlayerSave/blob/master","baseUrl":"/","classOrder":[{"collapsed":false,"classes":["PlayerSave"],"gitSourceBranch":"main"}],"apiCategories":[]}')}}]);
