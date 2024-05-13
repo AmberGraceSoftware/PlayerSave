@@ -13,6 +13,7 @@ for fault tolerance in Roblox experiences.
 - [Trade Transactions](#trade-transactions)
 - [Data Migration](#data-migration)
 - [Logging](#logging)
+- [Debugger](#debugger)
 
 :::info
 This documentation page is currently in progress

@@ -90,6 +90,20 @@ type ConfigPartial_BindToClose = {
     SaveRetryInterval: number?,
 }
 
+export type GroupMembersAllowEntry = {}
+type Config_Debugger = {
+    Enabled: boolean,
+    AllowInStudio: boolean,
+    AllowUserIdsToUse: {number},
+    AllowGroupMembersToUse: {GroupMembersAllowEntry},
+}
+type ConfigPartial_Debugger = {
+    Enabled: boolean?,
+    AllowInStudio: boolean?,
+    AllowUserIdsToUse: {number}?,
+    AllowGroupMembersToUse: {GroupMembersAllowEntry}?,
+}
+
 export type Config = {
     DataVisibility: Config_DataVisibility,
     MigrateLegacyData: Config_MigrateLegacyData?,
@@ -98,6 +112,7 @@ export type Config = {
     SaveRetries: Config_SaveRetries,
     Logging: Config_Logging,
     BindToClose: Config_BindToClose,
+    Debugger: Config_Debugger,
 }
 export type ConfigPartial = {
     DataVisibility: ConfigPartial_DataVisibility?,
@@ -107,6 +122,7 @@ export type ConfigPartial = {
     SaveRetries: ConfigPartial_SaveRetries?,
     Logging: ConfigPartial_Logging?,
     BindToClose: ConfigPartial_BindToClose?,
+    Debugger: ConfigPartial_Debugger?,
 }
 
 local defaultConfig: Config = {
@@ -162,6 +178,14 @@ local defaultConfig: Config = {
         SaveRetryEnabled = true,
         SaveRetryInterval = 6,
     },
+
+    -- (Opt-out) Debugger
+    Debugger = {
+        Enabled = true,
+        AllowInStudio = true,
+        AllowUserIdsToUse = {},
+        AllowGroupMembersToUse = {},
+    }
 }
 
 return defaultConfig
