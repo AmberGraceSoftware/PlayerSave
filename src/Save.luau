@@ -16,6 +16,7 @@ function Save.new()
     self._safeToSave = true
     self._loaded = false
     self._closed = false
+    self._isSaving = false
     self._data = {}
     self._listenerTree = ListenerTree.new()
 

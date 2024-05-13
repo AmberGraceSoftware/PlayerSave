@@ -7,7 +7,7 @@
 ]]
 local DataStoreService = game:GetService("DataStoreService")
 local RunService = game:GetService("RunService")
-local Config = require(script.Parent.Config)
+local Config = require(script.Parent.Parent.Config)
 
 local DataStoreWrapper = {}
 DataStoreWrapper.__index = {}

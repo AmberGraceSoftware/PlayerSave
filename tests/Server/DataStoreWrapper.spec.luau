@@ -1,7 +1,7 @@
 --!strict
 
 return function()
-    local DataStoreWrapper = require(game.ReplicatedStorage.Packages.PlayerSave.DataStoreWrapper)
+    local DataStoreWrapper = require(game.ReplicatedStorage.Packages.PlayerSave.Server.DataStoreWrapper)
     local wrapper = DataStoreWrapper.new(nil, true)
     local mockPlayer: Player = {UserId = -12345} :: any
     it("allows mock GetAsync and SetAsync requests to be performed", function()

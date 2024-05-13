@@ -29,9 +29,8 @@ local LIBRARY_VERSION = "0.0.1"
 local RunService = game:GetService("RunService")
 local Save = require(script.Save)
 local Config = require(script.Config)
-local DataStoreWrapper = require(script.DataStoreWrapper)
-local PlayerSaveClient = require(script.PlayerSaveClient)
-local PlayerSaveServer = require(script.PlayerSaveServer)
+local PlayerSaveClient = require(script.Client)
+local PlayerSaveServer = require(script.Server)
 local Registry = require(script.Registry)
 export type KeyPath = Save.KeyPath
 export type Save = Save.Save
@@ -58,9 +57,8 @@ end
 -- Server/client runtime function
 function Start()
     registry:StartHeartbeatLoop()
-    local dataStoreWrapper = DataStoreWrapper.new()
     if RunService:IsServer() then
-        PlayerSaveServer.Start(registry, dataStoreWrapper, LIBRARY_VERSION)
+        PlayerSaveServer.Start(registry, LIBRARY_VERSION)
     else
         PlayerSaveClient.Start(registry)
     end

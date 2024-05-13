@@ -1,10 +1,10 @@
 --!strict
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Config = require(script.Parent.Config)
 local SerializeUtil = require(script.Parent.SerializeUtil)
-local DataStoreWrapper = require(ReplicatedStorage.Packages.PlayerSave.DataStoreWrapper)
-local Registry = require(ReplicatedStorage.Packages.PlayerSave.Registry)
+local DataStoreWrapper = require(script.DataStoreWrapper)
+local Registry = require(script.Parent.Registry)
 export type Registry = Registry.Registry
 export type DataStoreWrapper = DataStoreWrapper.DataStoreWrapper
 
@@ -12,13 +12,14 @@ local PlayerSaveServer = {}
 
 function PlayerSaveServer.Start(
     registry: Registry,
-    wrapper: DataStoreWrapper,
     libraryVersion: string
 )
+    -- Save Loading Mechanism
+    local dataStoreWrapper = DataStoreWrapper.new()
     Players.PlayerAdded:Connect(function(player)
         local save = registry:OpenSave(player)
         -- (Blocking) Request initial data
-        local success, loadedDataOrErr = wrapper:GetAsync(player)
+        local success, loadedDataOrErr = dataStoreWrapper:GetAsync(player)
         if not save:PlayerIsStillInGame() then
             return
         end
@@ -69,6 +70,8 @@ function PlayerSaveServer.Start(
             save._listenerTree:FireAllListeners(save._data)
         end
     end)
+
+    -- Exit save mechanism
     Players.PlayerRemoving:Connect(function(player)
         task.defer(function()
             local save = registry:CloseSave(player)
@@ -76,12 +79,24 @@ function PlayerSaveServer.Start(
                 return
             end
             if save:IsSafeToSave() then
-                wrapper:SetAsync(player, {
+                save._isSaving = true
+                local success, err = dataStoreWrapper:SetAsync(player, {
                     PlayerSaveLibraryVersion = libraryVersion,
                     SaveData = save._data,
                 })
+                if not success then
+                    warn(err)
+                end
+                save._isSaving = false
             end
         end)
+    end)
+
+    -- BindToClose mechanism
+    game:BindToClose(function()
+        while #Players:GetPlayers() > 0 do
+            RunService.Heartbeat:Wait()
+        end
     end)
 end
 
