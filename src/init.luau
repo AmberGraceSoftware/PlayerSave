@@ -38,32 +38,25 @@ export type Save = Save.Save
 export type Config = Config.Config
 export type ConfigPartial = Config.ConfigPartial
 
-local function deepMerge(table1: {[string]: any}, table2: {[string]: any})
-    for k, v in table2 do
-        if typeof(v) == "table"
-        and typeof(table1[k]) == "table" then
-            deepMerge(table1[k], v)
-        else
-            table1[k] = v
-        end
-    end
-end
-
+local registry = Registry.new()
 local PlayerSave = {}
 
-local initialized = false
-local registry = Registry.new()
-function PlayerSave.Init(config: ConfigPartial?)
-    if initialized then
-        error("PlayerSave.Init has already been called!")
+function PlayerSave.SetConfig(config: ConfigPartial)
+    local function deepMerge(table1: {[string]: any}, table2: {[string]: any})
+        for k, v in table2 do
+            if typeof(v) == "table"
+            and typeof(table1[k]) == "table" then
+                deepMerge(table1[k], v)
+            else
+                table1[k] = v
+            end
+        end
     end
-    
-    -- Perform deep merge of config keys
-    if config then
-        deepMerge(Config, config)
-    end
+    deepMerge(Config, config)
+end
 
-    -- Start server/client
+-- Server/client runtime function
+function Start()
     registry:StartHeartbeatLoop()
     local dataStoreWrapper = DataStoreWrapper.new()
     if RunService:IsServer() then
@@ -71,6 +64,12 @@ function PlayerSave.Init(config: ConfigPartial?)
     else
         PlayerSaveClient.Start(registry)
     end
+end
+
+-- Start runtime logic only if we're in a running game (i.e. not editing in
+-- studio, or in a unit test environment)
+if RunService:IsRunning() then
+    task.defer(task.defer, Start)
 end
 
 function PlayerSave.Get(player: Player): Save?
@@ -115,5 +114,7 @@ function PlayerSave.WaitForLoaded(
     end
     return nil
 end
+
+PlayerSave.Version = LIBRARY_VERSION
 
 return PlayerSave
