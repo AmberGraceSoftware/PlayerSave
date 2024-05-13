@@ -3,6 +3,23 @@
     Stores configuration values for PlayerStore
 ]]
 
+type Config_DataStore = {
+    Name: string,
+    Scope: string?,
+    Options: DataStoreOptions?,
+    PlayerSaveKey: (player: Player) -> string,
+    SetOptions: ((player: Player, dataToSave: any) -> DataStoreSetOptions?)?,
+    GetOptions: ((player: Player) -> DataStoreGetOptions?)?,
+}
+type ConfigPartial_DataStore = {
+    Name: string?,
+    Scope: string?,
+    Options: DataStoreOptions?,
+    PlayerSaveKey: ((player: Player) -> string)?,
+    SetOptions: ((player: Player, dataToSave: any) -> DataStoreSetOptions?)?,
+    GetOptions: ((player: Player) -> DataStoreGetOptions?)?,
+}
+
 type DataVisibilityTree = boolean
     | {[string]: DataVisibilityTree}
     | {DataVisibilityTree}
@@ -105,6 +122,7 @@ type ConfigPartial_Debugger = {
 }
 
 export type Config = {
+    DataStore: Config_DataStore,
     DataVisibility: Config_DataVisibility,
     MigrateLegacyData: Config_MigrateLegacyData?,
     WaitForExitSaveBeforeLoading: Config_WaitForExitSaveBeforeLoading,
@@ -115,6 +133,7 @@ export type Config = {
     Debugger: Config_Debugger,
 }
 export type ConfigPartial = {
+    DataStore: ConfigPartial_DataStore?,
     DataVisibility: ConfigPartial_DataVisibility?,
     MigrateLegacyData: Config_MigrateLegacyData?,
     WaitForExitSaveBeforeLoading: ConfigPartial_WaitForExitSaveBeforeLoading?,
@@ -126,6 +145,21 @@ export type ConfigPartial = {
 }
 
 local defaultConfig: Config = {
+    DataStore = {
+        Name = "PlayerSave",
+        Scope = nil,
+        Options = nil,
+        PlayerSaveKey = function(player)
+            return tostring(player.UserId)
+        end,
+        SetOptions = nil,
+        GetOptions = function()
+            local getOptions = Instance.new("DataStoreGetOptions")
+            getOptions.UseCache = false
+            return getOptions
+        end,
+    },
+
     -- (Opt-In) Data Replication Mechanism
     DataVisibility = {
         VisibleToOwnClient = true,
@@ -185,7 +219,7 @@ local defaultConfig: Config = {
         AllowInStudio = true,
         AllowUserIdsToUse = {},
         AllowGroupMembersToUse = {},
-    }
+    },
 }
 
 return defaultConfig
