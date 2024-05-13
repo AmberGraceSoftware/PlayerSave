@@ -112,7 +112,7 @@ export type ConfigPartial = {
 local defaultConfig: Config = {
     -- (Opt-In) Data Replication Mechanism
     DataVisibility = {
-        VisibleToOwnClient = false,
+        VisibleToOwnClient = true,
         VisibleToAllClients = false,
     },
 

@@ -1,17 +1,28 @@
 --!strict
 --[[
-    A simple DataStore player data management library.
-    The architecture + API is similar to ProfileService, but utilizes some extra
-    techinques for fault tolerance and dupe prevention.
-
-    Features:
-        - Player data saves on exit
-        - Tolerance for server crashes, universe teleports, trading API (WIP)
-        - Configurable auto-saving and on-demand saving
-        - Configurable replication of a player's own data to the client
-        - Get, Set, Subscribe for different values in the player's data store
-        - Client-side prediction
+    A holistic library for storing, replicating, and observing player save data
 ]]
+
+--[=[
+    @class PlayerSave
+
+    :::warning
+    PlayerSave is still a work in progress and does not currently have a full
+    release! Please avoiding PlayerSave in production-bound projects, as the
+    library is not fully tested, and the API may be subject to change
+    :::
+    
+    PlayerSave is a holistic library that handles storing, replicating,
+    and observing player data in a simple and fault-tolerant way.
+
+    PlayerSave provides a number of key [Mechanisms](../docs/mechanisms) that
+    can be configured to the needs of a project. PlayerSave is designed to
+    function as expected without much configuration out-of-the-gate, but you
+    should also read the documentation to customize your configuration depending
+    on the features your game includes (for example, trading).
+    
+    For more information, see the [Usage Guide](../docs/intro)
+]=]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -33,6 +44,20 @@ function PlayerSave.Init(config: ConfigPartial?)
     if not RunService:IsServer() then
         error("PlayerSave.Init can only be called on the server!")
     end
+
+    -- Perform deep merge of config keys
+    local function deepMerge(table1: {[string]: any}, table2: {[string]: any})
+        for k, v in table2 do
+            if typeof(v) == "table"
+            and typeof(table1[k]) == "table" then
+                deepMerge(table1[k], v)
+            else
+                table1[k] = v
+            end
+        end
+    end
+    deepMerge(Config, config :: any)
+
     Players.PlayerAdded:Connect(function(player)
         registry[player] = Save.new()
     end)

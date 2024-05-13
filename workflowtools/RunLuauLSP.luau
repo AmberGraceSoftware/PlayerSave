@@ -43,6 +43,7 @@ local function RunLuauLSP()
         end
     end
     table.insert(args, "src")
+    table.insert(args, "tests")
     print("luau-lsp " .. table.concat(args, " "))
     local result = process.spawn("luau-lsp", args)
     if result.ok then
