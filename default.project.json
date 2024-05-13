@@ -1,0 +1,26 @@
+{
+  "name": "playersave",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Packages": {
+        "$className": "Folder",
+        "PlayerSave": {
+          "$path": "src"
+        }
+      },
+      "DevPackages": {
+        "$path": "DevPackages"
+      },
+      "Tests": {
+        "$path": "tests"
+      }
+    },
+    "ServerScriptService":{
+      "TestRunner": {
+        "$path": "workflowtools/TestRunner.server.luau"
+      }
+    }
+  }
+}
