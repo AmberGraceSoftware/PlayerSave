@@ -111,13 +111,13 @@ function SaveScheduler.__index.ProcessQueue(self: SaveScheduler)
     end
 end
 
-function SaveScheduler.__index.Start(self: SaveScheduler)
+function SaveScheduler.__index.StartProcessLoop(self: SaveScheduler)
     self._heartbeatConnection = RunService.Heartbeat:Connect(function()
         self:ProcessQueue()
     end)
 end
 
-function SaveScheduler.__index.Stop(self: SaveScheduler)
+function SaveScheduler.__index.StopProcessLoop(self: SaveScheduler)
     if self._heartbeatConnection then
         self._heartbeatConnection:Disconnect()
         self._heartbeatConnection = nil
@@ -157,9 +157,12 @@ function SaveScheduler.__index.ScheduleSave(
     self:ProcessQueue()
 end
 
-function SaveScheduler.__index.AllSavesHaveBeenProcessed(self: SaveScheduler)
+function SaveScheduler.__index.ProcessQueueIsEmpty(self: SaveScheduler)
     return next(self._queuedSaves) == nil
-        and next(self._currentlyProcessingSaves) == nil
+end
+
+function SaveScheduler.__index.IsStillProcessingSave(self: SaveScheduler)
+    return next(self._currentlyProcessingSaves) ~= nil
 end
 
 return SaveScheduler

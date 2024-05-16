@@ -95,13 +95,13 @@ type ConfigPartial_Logging = {
 }
 
 type Config_BindToClose = {
-    EnableWhileInStudio: boolean,
+    WaitForSetAsyncResponsesWhileInStudio: boolean,
     TimeoutWhileInStudio: number,
     SaveRetryEnabled: boolean,
     SaveRetryInterval: number,
 }
 type ConfigPartial_BindToClose = {
-    EnableWhileInStudio: boolean?,
+    WaitForSetAsyncResponsesWhileInStudio: boolean?,
     TimeoutWhileInStudio: number?,
     SaveRetryEnabled: boolean?,
     SaveRetryInterval: number?,
@@ -207,8 +207,8 @@ local defaultConfig: Config = {
 
     -- (Opt-out) BindToClose exit save mechanism
     BindToClose = {
-        EnableWhileInStudio = true,
-        TimeoutWhileInStudio = 30,
+        WaitForSetAsyncResponsesWhileInStudio = false,
+        TimeoutWhileInStudio = 10,
         SaveRetryEnabled = true,
         SaveRetryInterval = 6,
     },

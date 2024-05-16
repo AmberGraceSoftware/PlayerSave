@@ -64,7 +64,7 @@ function PlayerSaveServer.Start(
     -- Save Loading Mechanism
     local dataStoreWrapper = DataStoreWrapper.new()
     local saveScheduler = SaveScheduler.new(dataStoreWrapper, libraryVersion)
-    saveScheduler:Start()
+    saveScheduler:StartProcessLoop()
     Players.PlayerAdded:Connect(function(player)
         local save = registry:OpenSave(player)
         -- (Blocking) Request initial data
@@ -111,12 +111,39 @@ function PlayerSaveServer.Start(
     end)
 
     -- BindToClose mechanism
+    local function stillProcessingSaves()
+        if #registry:GetOpenSaves() > 0 then
+            return true
+        end
+        if not saveScheduler:ProcessQueueIsEmpty() then
+            return true
+        end
+        if saveScheduler:IsStillProcessingSave() then
+            if not RunService:IsStudio()
+            or Config.BindToClose.WaitForSetAsyncResponsesWhileInStudio then
+                return true
+            end
+        end
+        return false
+    end
     game:BindToClose(function()
+        local bindToCloseStart = os.clock()
+        local function didTimeOut()
+            return RunService:IsStudio() and (
+                (os.clock() - bindToCloseStart)
+                > Config.BindToClose.TimeoutWhileInStudio
+            )
+        end
+        
+        -- Manually process saves until the queue is empty
+        saveScheduler:StopProcessLoop()
         saveScheduler:ProcessQueue()
-        while #registry:GetOpenSaves() > 0
-        or not saveScheduler:AllSavesHaveBeenProcessed() do
+        while stillProcessingSaves() do
             RunService.Heartbeat:Wait()
             saveScheduler:ProcessQueue()
+            if didTimeOut() then
+                break
+            end
         end
     end)
 end
