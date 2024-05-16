@@ -24,28 +24,23 @@
     For more information, see the [Usage Guide](../docs/intro)
 ]=]
 
-local Players = game:GetService("Players")
+local LIBRARY_VERSION = "0.0.1"
+
 local RunService = game:GetService("RunService")
 local Save = require(script.Save)
 local Config = require(script.Config)
+local PlayerSaveClient = require(script.Client)
+local PlayerSaveServer = require(script.Server)
+local Registry = require(script.Registry)
 export type KeyPath = Save.KeyPath
 export type Save = Save.Save
 export type Config = Config.Config
 export type ConfigPartial = Config.ConfigPartial
 
+local registry = Registry.new()
 local PlayerSave = {}
 
-local initialized = false
-local registry: {[Player]: Save} = {}
-function PlayerSave.Init(config: ConfigPartial?)
-    if initialized then
-        error("PlayerSave.Init has already been called!")
-    end
-    if not RunService:IsServer() then
-        error("PlayerSave.Init can only be called on the server!")
-    end
-
-    -- Perform deep merge of config keys
+function PlayerSave.SetConfig(config: ConfigPartial)
     local function deepMerge(table1: {[string]: any}, table2: {[string]: any})
         for k, v in table2 do
             if typeof(v) == "table"
@@ -56,52 +51,45 @@ function PlayerSave.Init(config: ConfigPartial?)
             end
         end
     end
-    deepMerge(Config, config :: any)
+    deepMerge(Config, config)
+end
 
-    Players.PlayerAdded:Connect(function(player)
-        registry[player] = Save.new()
-    end)
-    Players.PlayerRemoving:Connect(function(player)
-        task.defer(function()
-            local store = registry[player]
-            if not store then
-                return
-            end
-            registry[player] = nil
-            store._closed = true
-        end)
-    end)
+-- Server/client runtime function
+function Start()
+    registry:StartHeartbeatLoop()
+    if RunService:IsServer() then
+        PlayerSaveServer.Start(registry, LIBRARY_VERSION)
+    else
+        PlayerSaveClient.Start(registry)
+    end
+end
+
+-- Start runtime logic only if we're in a running game (i.e. not editing in
+-- studio, or in a unit test environment)
+if RunService:IsRunning() then
+    task.defer(task.defer, Start)
 end
 
 function PlayerSave.Get(player: Player): Save?
-    return registry[player]
+    return registry:Get(player)
 end
 
 function PlayerSave.GetLoaded(player: Player): Save?
-    local store = PlayerSave.Get(player)
-    if not store then
+    local save = PlayerSave.Get(player)
+    if not save then
         return nil
     end
-    if not store:IsLoaded() then
+    if not save:IsLoaded() then
         return nil
     end
-    return store
+    return save
 end
  
 function PlayerSave.WaitFor(
     player: Player,
     timeout: number?
 ): Save?
-    local expires = if timeout then os.clock() + timeout else math.huge
-    while os.clock() < expires
-    and player.Parent == Players do
-        local store = PlayerSave.Get(player)
-        if store then
-            return store
-        end
-        RunService.Heartbeat:Wait()
-    end
-    return nil
+    return registry:WaitFor(player, timeout)
 end
 
 function PlayerSave.WaitForLoaded(
@@ -109,8 +97,8 @@ function PlayerSave.WaitForLoaded(
     timeout: number?
 ): Save?
     local startTime = os.clock()
-    local store = PlayerSave.WaitFor(player, timeout)
-    if not store then
+    local save = PlayerSave.WaitFor(player, timeout)
+    if not save then
         return nil
     end
     local remaining = if timeout
@@ -119,10 +107,55 @@ function PlayerSave.WaitForLoaded(
     if remaining < 0 then
         return nil
     end
-    if store:WaitUntilLoaded(remaining) then
-        return store
+    if save:WaitUntilLoaded(remaining) then
+        return save
     end
     return nil
 end
+
+function PlayerSave.OnSaveOpened(
+    listener: (player: Player, save: Save) -> ()
+)
+    local connection = registry.SaveOpened.Event:Connect(function(player)
+        listener(player, registry:Get(player) :: Save)
+    end)
+    return function()
+        connection:Disconnect()
+    end
+end
+
+function PlayerSave.OnSaveLoaded(
+    listener: (player: Player, save: Save) -> ()
+)
+    local connection = registry.SaveLoaded.Event:Connect(function(player)
+        listener(player, registry:Get(player) :: Save)
+    end)
+    return function()
+        connection:Disconnect()
+    end
+end
+
+function PlayerSave.OnSaveClosed(
+    listener: (player: Player, save: Save) -> ()
+)
+    local connection = registry.SaveClosed.Event:Connect(function(
+        closure: () -> (Player, Save)
+    )
+        listener(closure())
+    end)
+    return function()
+        connection:Disconnect()
+    end
+end
+
+function PlayerSave.GetOpenSaves()
+    return registry:GetOpenSaves()
+end
+
+function PlayerSave.GetLoadedSaves()
+    return registry:GetLoadedSaves()
+end
+
+PlayerSave.Version = LIBRARY_VERSION
 
 return PlayerSave

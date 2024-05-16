@@ -2,15 +2,16 @@
 --[[
     Utility for parsing key paths
 ]]
+local StorableUtil = require(script.StorableUtil)
 
 export type KeyList = {string | number}
 export type KeyPath = string | {string | number}
 
 local SerializeUtil = {}
 
-function SerializeUtil.KeyListToString(keyList: KeyList): string
+function SerializeUtil.KeyListToString(keyList: KeyList, lastI: number?): string
     local output: {string} = {}
-    for _, key in keyList do
+    for i, key in keyList do
         if typeof(key) == "string" then
             if key:match("[^a-zA-Z0-9_]")
             or key:sub(1, 1):match("[^a-zA-Z]") then
@@ -48,12 +49,14 @@ function SerializeUtil.KeyListToString(keyList: KeyList): string
             table.insert(output, tostring(key))
             table.insert(output, "]")
         end
+        if i == lastI then
+            break
+        end
     end
     return table.concat(output)
 end
 
 function SerializeUtil.ValidateKeyList(keyList: KeyList, minSize: number)
-    local expectedI = 1
     for i, entry in keyList do
         local entryType = typeof(entry)
         if entryType ~= "string"
@@ -62,16 +65,12 @@ function SerializeUtil.ValidateKeyList(keyList: KeyList, minSize: number)
                 .. "element " .. tostring(i) .. " of keyPath, got "
                 .. entryType)
         end
-        if i ~= expectedI then
-            error("Invalid KeyPath: expected all keys to be numbers; got "
-                .. "key '" .. tostring(i) .. "'")
-        end
     end
     if #keyList < minSize then
         error("Invalid KeyPath: must contain at least "
             .. tostring(minSize) .. " key, got 0")
     end
-    if typeof(keyList[1] ~= "string") then
+    if typeof(keyList[1]) ~= "string" then
         error("Invalid KeyPath: first key must be of type string, got "
             .. typeof(keyList[1]))
     end
@@ -95,12 +94,10 @@ function SerializeUtil.ParseKeypath(keyPath: KeyPath, minSize: number): KeyList
     end
 end
 
-local INVALID_TYPES: {[string]: true} = {
-    Instance = true,
-}
 function SerializeUtil.ValueIsStorable(value: unknown): (boolean, string?)
-    if INVALID_TYPES[typeof(value)] then
-        return false, ""
+    if not StorableUtil.ValueIsStorable(value) then
+        return false, "'" .. typeof(value) .. " is not a type that can be "
+            .. "stored in a DataStore!"
     end
     if typeof(value) == "table" then
         local expectedNextSequentialIndex: number? = nil
@@ -146,6 +143,14 @@ function SerializeUtil.ValueIsStorable(value: unknown): (boolean, string?)
         end
     end
     return true
+end
+
+function SerializeUtil.DeserializeStorable(storable: any)
+    return StorableUtil.Deserialize(storable)
+end
+
+function SerializeUtil.SerializeToStorable(data: any)
+    return StorableUtil.Serialize(data)
 end
 
 return SerializeUtil

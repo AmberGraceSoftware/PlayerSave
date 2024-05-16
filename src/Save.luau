@@ -3,6 +3,7 @@
     Wrapper class for player data store
 ]]
 
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ListenerTree = require(script.Parent.ListenerTree)
 local SerializeUtil = require(script.Parent.SerializeUtil)
@@ -11,23 +12,25 @@ export type KeyPath = SerializeUtil.KeyPath
 local Save = {}
 Save.__index = {}
 
-function Save.new()
+function Save.new(player: Player)
     local self = {}
     self._safeToSave = true
     self._loaded = false
     self._closed = false
+    self._isSaving = false
+    self._player = player
     self._data = {}
     self._listenerTree = ListenerTree.new()
 
     setmetatable(self, Save)
-    table.freeze(self)
     return self
 end
 
-export type Save = typeof(Save.new())
+export type Save = typeof(Save.new(nil :: any))
 
 function Save.__index.PlayerIsStillInGame(self: Save)
-    return self._loaded and not self._closed
+    return (self._player.Parent == Players)
+        and not self._closed
 end
 
 function Save.__index.Get(
@@ -58,8 +61,19 @@ function Save.__index.Set(
     keyPath: KeyPath,
     newValue: any
 )
+    if RunService:IsServer() and not self._loaded then
+        warn("Save:Set() was called on " .. self._player.Name .. "'s save "
+            .. "before the save was loaded! This may have been a mistake, as "
+            .. "the value written to the save will get overwritten once the "
+            .. "player's data loads. traceback:\n"
+            .. debug.traceback())
+    end
     local keyList = SerializeUtil.ParseKeypath(keyPath, 1)
-    local function checkKey(parentTable: {[string | number]: any}, key: unknown)
+    local function checkKey(
+        parentTable: {[string | number]: any},
+        key: unknown,
+        debugKeyIndex: number?
+    )
         if typeof(key) == "number" then
             if key > #parentTable + 1
             or key < 1
@@ -68,7 +82,7 @@ function Save.__index.Set(
                 error("Array indices must be sequential! Got key "
                     .. tostring(key)
                     .. " in path "
-                    .. SerializeUtil.KeyListToString(keyList)
+                    .. SerializeUtil.KeyListToString(keyList, debugKeyIndex)
                     .. "; expected an integer index between 1 and "
                     .. tostring(#parentTable + 1))
             end
@@ -77,7 +91,7 @@ function Save.__index.Set(
                 error("Unexpected non-utf8 character for string key '"
                     .. key
                     .. " in path "
-                    .. SerializeUtil.KeyListToString(keyList))
+                    .. SerializeUtil.KeyListToString(keyList, debugKeyIndex))
             end
         else
             error("Unexpected key '"
@@ -93,14 +107,14 @@ function Save.__index.Set(
     local rootTable = self._data
     for i = 1, #keyList - 1 do
         local key = keyList[i]
-        checkKey(rootTable, key)
+        checkKey(rootTable, key, i)
         local nextTable = rootTable[key]
         if nextTable == nil then
             nextTable = {}
             rootTable[key] = nextTable
         elseif typeof(nextTable) ~= "table" then
             error("Invalid attempt to write over keypath "
-                .. SerializeUtil.KeyListToString(keyList)
+                .. SerializeUtil.KeyListToString(keyList, i)
                 .. ":\nValue at key '"
                 .. key
                 .. "' is not a table! Got value "
@@ -128,11 +142,26 @@ function Save.__index.Set(
 
     local finalKey = keyList[#keyList]
     local oldValue = rootTable[finalKey]
+    checkKey(rootTable, finalKey)
+
+    -- If we're setting the newValue to nil, throw an error if this cuts
+    -- an array in the middle
+    if newValue == nil then
+        if typeof((next(rootTable))) == "number" then
+            if newValue < #rootTable then
+                error("Attempt to set a value in the middle of an array to nil "
+                    .. "(at keypath " .. SerializeUtil.KeyListToString(keyList)
+                    .."); this would create a non-sequential array!")
+            end
+        end
+    end
+
     local listenersHit = self._listenerTree:GetListenersHit(
         keyList,
         oldValue,
         newValue
     )
+
     rootTable[finalKey] = newValue
     for _, listener in listenersHit do
         listener(newValue)

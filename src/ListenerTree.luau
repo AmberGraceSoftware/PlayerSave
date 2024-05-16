@@ -227,4 +227,30 @@ function ListenerTree.__index.GetListenersHit(
     return listenersHit
 end
 
+function ListenerTree.__index.FireAllListeners(
+    self: ListenerTree,
+    currentDataTree: any
+)
+    local callbacksToFire = {}
+    local function addRoot(node: Node, value: any)
+        if node.listenerSet then
+            for listener in node.listenerSet do
+                callbacksToFire[listener] = value
+            end
+        end
+        if node.children then
+            for key, child in node.children do
+                addRoot(child, if typeof(value) == "table"
+                    then value[key]
+                    else nil)
+            end
+        end
+    end
+    addRoot(self._root, currentDataTree)
+
+    for listener, value in callbacksToFire do
+        task.spawn(listener, value)
+    end
+end
+
 return ListenerTree
