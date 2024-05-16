@@ -91,6 +91,8 @@ function PlayerSaveServer.Start(
             save._data = dataToInitialize
             save._listenerTree:FireAllListeners(save._data)
         end
+
+        registry.SaveLoaded:Fire(player)
     end)
 
     -- Exit save mechanism

@@ -113,6 +113,41 @@ function PlayerSave.WaitForLoaded(
     return nil
 end
 
+function PlayerSave.OnSaveOpened(
+    listener: (player: Player, save: Save) -> ()
+)
+    local connection = registry.SaveOpened.Event:Connect(function(player)
+        listener(player, registry:Get(player) :: Save)
+    end)
+    return function()
+        connection:Disconnect()
+    end
+end
+
+function PlayerSave.OnSaveLoaded(
+    listener: (player: Player, save: Save) -> ()
+)
+    local connection = registry.SaveLoaded.Event:Connect(function(player)
+        listener(player, registry:Get(player) :: Save)
+    end)
+    return function()
+        connection:Disconnect()
+    end
+end
+
+function PlayerSave.OnSaveClosed(
+    listener: (player: Player, save: Save) -> ()
+)
+    local connection = registry.SaveClosed.Event:Connect(function(
+        closure: () -> (Player, Save)
+    )
+        listener(closure())
+    end)
+    return function()
+        connection:Disconnect()
+    end
+end
+
 PlayerSave.Version = LIBRARY_VERSION
 
 return PlayerSave

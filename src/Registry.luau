@@ -13,6 +13,9 @@ function Registry.new()
     self._map = {} :: {[Player]: Save}
     self._onRegistryInsertOrHeartbeat = Instance.new("BindableEvent")
     self._heartbeatConn = nil :: RBXScriptConnection?
+    self.SaveOpened = Instance.new("BindableEvent")
+    self.SaveLoaded = Instance.new("BindableEvent")
+    self.SaveClosed = Instance.new("BindableEvent")
 
     setmetatable(self, Registry)
     return self
@@ -42,6 +45,7 @@ function Registry.__index.OpenSave(
     task.defer(function()
         self._onRegistryInsertOrHeartbeat:Fire()
     end)
+    self.SaveOpened:Fire(player)
     return save
 end
 
@@ -54,6 +58,9 @@ function Registry.__index.CloseSave(
         return nil
     end
     save._closed = true
+    self.SaveClosed:Fire(function()
+        return player, save
+    end)
     return save
 end
 
