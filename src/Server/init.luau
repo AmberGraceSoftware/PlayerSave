@@ -3,6 +3,7 @@ local DataStoreWrapper = require(script.DataStoreWrapper)
 local AutoSaving = require(script.Mechanisms.AutoSaving)
 local BindToClose = require(script.Mechanisms.BindToClose)
 local EnterLoadAndExitSave = require(script.Mechanisms.EnterLoadAndExitSave)
+local ReplicationServer = require(script.Mechanisms.ReplicationServer)
 local Registry = require(script.Parent.Registry)
 local SaveScheduler = require(script.SaveScheduler)
 export type Registry = Registry.Registry
@@ -20,8 +21,13 @@ function PlayerSaveServer.Start(
     local saveScheduler = SaveScheduler.new(dataStoreWrapper, libraryVersion)
     
     -- Start component mechanisms
+    ReplicationServer.Start(registry)
     saveScheduler:StartProcessLoop()
-    EnterLoadAndExitSave.Start(registry, saveScheduler, dataStoreWrapper)
+    EnterLoadAndExitSave.Start(
+        registry,
+        saveScheduler,
+        dataStoreWrapper
+    )
     AutoSaving.Start(registry, saveScheduler)
     BindToClose.Start(registry, saveScheduler)
 end
