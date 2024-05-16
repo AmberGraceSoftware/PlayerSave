@@ -37,7 +37,7 @@ local function processStoredValue(storedValue: unknown): (boolean, any)
         return false, "Data migration failure: " .. (
             storableErr
             or "result of callback Config.MigrateLegacyData() is not a "
-                .. "storeable object! Must be a table with string and number "
+                .. "storable object! Must be a table with string and number "
                 .. "keys."
         )
     else

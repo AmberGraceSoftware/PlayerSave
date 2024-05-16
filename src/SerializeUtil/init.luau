@@ -2,6 +2,7 @@
 --[[
     Utility for parsing key paths
 ]]
+local StorableUtil = require(script.StorableUtil)
 
 export type KeyList = {string | number}
 export type KeyPath = string | {string | number}
@@ -148,12 +149,12 @@ function SerializeUtil.ValueIsStorable(value: unknown): (boolean, string?)
     return true
 end
 
-function SerializeUtil.DeserializeStoreable(storeable: any)
-    return storeable
+function SerializeUtil.DeserializeStorable(storable: any)
+    return StorableUtil.Deserialize(storable)
 end
 
-function SerializeUtil.SerializeToStoreable(data: any)
-    return data
+function SerializeUtil.SerializeToStorable(data: any)
+    return StorableUtil.Serialize(data)
 end
 
 return SerializeUtil
