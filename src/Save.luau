@@ -330,6 +330,12 @@ function Save.__index.IsLoaded(
     return self._loaded and not self._closed
 end
 
+function Save.__index.IsSaving(
+    self: Save
+)
+    return self._isSaving
+end
+
 function Save.__index.WaitUntilLoaded(
     self: Save,
     timeout: number?

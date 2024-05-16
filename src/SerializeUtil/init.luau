@@ -95,7 +95,7 @@ function SerializeUtil.ParseKeypath(keyPath: KeyPath, minSize: number): KeyList
 end
 
 function SerializeUtil.ValueIsStorable(value: unknown): (boolean, string?)
-    if not StorableUtil.ValueIsStorable(value) then
+    if not StorableUtil.ValueIsStorableShallow(value) then
         return false, "'" .. typeof(value) .. " is not a type that can be "
             .. "stored in a DataStore!"
     end

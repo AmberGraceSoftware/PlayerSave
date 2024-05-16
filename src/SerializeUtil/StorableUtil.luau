@@ -508,7 +508,7 @@ local StorableUtil = {}
 
 StorableUtil.Serialize = serializeObject
 StorableUtil.Deserialize = deserializeObject
-function StorableUtil.ValueIsStorable(value: any)
+function StorableUtil.ValueIsStorableShallow(value: any)
     return rbxTypeToSerializerId[typeof(value)] ~= nil
 end
 
