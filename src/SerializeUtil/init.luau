@@ -70,7 +70,7 @@ function SerializeUtil.ValidateKeyList(keyList: KeyList, minSize: number)
         error("Invalid KeyPath: must contain at least "
             .. tostring(minSize) .. " key, got 0")
     end
-    if typeof(keyList[1] ~= "string") then
+    if typeof(keyList[1]) ~= "string" then
         error("Invalid KeyPath: first key must be of type string, got "
             .. typeof(keyList[1]))
     end

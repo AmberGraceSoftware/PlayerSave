@@ -148,6 +148,14 @@ function PlayerSave.OnSaveClosed(
     end
 end
 
+function PlayerSave.GetOpenSaves()
+    return registry:GetOpenSaves()
+end
+
+function PlayerSave.GetLoadedSaves()
+    return registry:GetLoadedSaves()
+end
+
 PlayerSave.Version = LIBRARY_VERSION
 
 return PlayerSave

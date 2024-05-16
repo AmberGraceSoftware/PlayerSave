@@ -94,7 +94,7 @@ return function()
 				UDim2.new(),
 				Vector2int16.new(),
 				Vector3int16.new(),
-				Axes.new({Enum.Axis.X, Enum.Axis.Z}),
+				(Axes :: any).new(Enum.Axis.X, Enum.Axis.Z),
 				Faces.new({Enum.NormalId.Top, Enum.NormalId.Back}),
 				PathWaypoint.new(Vector3.new(), Enum.PathWaypointAction.Jump),
 				PhysicalProperties.new(0.5, 1, 1),

@@ -14,7 +14,7 @@ end
 
 function SaveFormat.DeserializeStoredValue(storedValue: any)
     if SaveFormat.IsSavedValueInPlayerSaveFormat(storedValue) then
-        return SerializeUtil.DeserializeStorable(storedValue)
+        return SerializeUtil.DeserializeStorable(storedValue.SaveData)
     else
         return storedValue
     end

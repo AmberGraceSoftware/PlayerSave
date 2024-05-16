@@ -155,7 +155,7 @@ do
 				)
 			end
 			
-			return Axes.new(unpack(axisList))
+			return (Axes :: any).new(unpack(axisList))
 		end,
 		serialize = function(axes: Axes)
 			local axesSerialized = {}

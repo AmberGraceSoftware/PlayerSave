@@ -3,6 +3,7 @@
     Wrapper class for player data store
 ]]
 
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ListenerTree = require(script.Parent.ListenerTree)
 local SerializeUtil = require(script.Parent.SerializeUtil)
@@ -28,7 +29,8 @@ end
 export type Save = typeof(Save.new(nil :: any))
 
 function Save.__index.PlayerIsStillInGame(self: Save)
-    return self._loaded and not self._closed
+    return (self._player.Parent == Players)
+        and not self._closed
 end
 
 function Save.__index.Get(
@@ -59,6 +61,13 @@ function Save.__index.Set(
     keyPath: KeyPath,
     newValue: any
 )
+    if RunService:IsServer() and not self._loaded then
+        warn("Save:Set() was called on " .. self._player.Name .. "'s save "
+            .. "before the save was loaded! This may have been a mistake, as "
+            .. "the value written to the save will get overwritten once the "
+            .. "player's data loads. traceback:\n"
+            .. debug.traceback())
+    end
     local keyList = SerializeUtil.ParseKeypath(keyPath, 1)
     local function checkKey(
         parentTable: {[string | number]: any},

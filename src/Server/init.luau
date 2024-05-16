@@ -6,6 +6,7 @@ local SerializeUtil = require(script.Parent.SerializeUtil)
 local DataStoreWrapper = require(script.DataStoreWrapper)
 local Registry = require(script.Parent.Registry)
 local SaveFormat = require(script.SaveFormat)
+local SaveScheduler = require(script.SaveScheduler)
 export type Registry = Registry.Registry
 export type DataStoreWrapper = DataStoreWrapper.DataStoreWrapper
 
@@ -41,6 +42,7 @@ local function processStoredValue(storedValue: unknown): (boolean, any)
                 .. "keys."
         )
     else
+        warn("Encountered legacy data", storedValue)
         -- Case 4: Encountered legacy data; no MigrateLegacyData callback was
         -- specified.
         if typeof(storedValue) ~= "table" then
@@ -61,6 +63,8 @@ function PlayerSaveServer.Start(
 )
     -- Save Loading Mechanism
     local dataStoreWrapper = DataStoreWrapper.new()
+    local saveScheduler = SaveScheduler.new(dataStoreWrapper, libraryVersion)
+    saveScheduler:Start()
     Players.PlayerAdded:Connect(function(player)
         local save = registry:OpenSave(player)
         -- (Blocking) Request initial data
@@ -102,24 +106,17 @@ function PlayerSaveServer.Start(
             if not save then
                 return
             end
-            if save:IsSafeToSave() then
-                save._isSaving = true
-                local success, err = dataStoreWrapper:SetAsync(player, {
-                    PlayerSaveLibraryVersion = libraryVersion,
-                    SaveData = save._data,
-                })
-                if not success then
-                    warn(err)
-                end
-                save._isSaving = false
-            end
+            saveScheduler:ScheduleSave(save, "ExitSave")
         end)
     end)
 
     -- BindToClose mechanism
     game:BindToClose(function()
-        while #Players:GetPlayers() > 0 do
+        saveScheduler:ProcessQueue()
+        while #registry:GetOpenSaves() > 0
+        or not saveScheduler:AllSavesHaveBeenProcessed() do
             RunService.Heartbeat:Wait()
+            saveScheduler:ProcessQueue()
         end
     end)
 end

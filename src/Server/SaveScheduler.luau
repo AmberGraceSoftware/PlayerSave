@@ -30,6 +30,7 @@ function SaveScheduler.new(
         retryCount: number,
         scheduledClockTime: number?,
     }}
+    self._currentlyProcessingSaves = {} :: {[Save]: boolean}
     self._heartbeatConnection = nil :: RBXScriptConnection?
     setmetatable(self, SaveScheduler)
     return self
@@ -38,23 +39,27 @@ end
 export type SaveScheduler = typeof(SaveScheduler.new(nil :: any, ""))
 
 function SaveScheduler.__index.ProcessQueue(self: SaveScheduler)
-    -- Prioritize exit saves over all other save types
-    local savesToProcessInReverseOrder: {Save} = {}
     local now = os.clock()
+    local processableSaves: {[Save]: SaveType} = {}
     for save, info in self._queuedSaves do
-        if info.scheduledClockTime > now then
+        if save._isSaving then
             continue
         end
-        if info.saveType == "ExitSave" then
+        if info.scheduledClockTime
+        and info.scheduledClockTime > now then
             continue
         end
-        table.insert(savesToProcessInReverseOrder, save)
+        processableSaves[save] = info.saveType
     end
-    for save, info in self._queuedSaves do
-        if info.scheduledClockTime > now then
-            continue
+    -- Prioritize exit saves first over all other save types
+    local savesToProcessInReverseOrder: {Save} = {}
+    for save, saveType in processableSaves do
+        if saveType ~= "ExitSave" then
+            table.insert(savesToProcessInReverseOrder, save)
         end
-        if info.saveType ~= "ExitSave" then
+    end
+    for save, saveType in processableSaves do
+        if saveType == "ExitSave" then
             table.insert(savesToProcessInReverseOrder, save)
         end
     end
@@ -73,22 +78,26 @@ function SaveScheduler.__index.ProcessQueue(self: SaveScheduler)
                 libraryVersion = self._libraryVersion
             })
         end)
-        if serializeSuccess then
+        if not serializeSuccess then
             warn("Data could not be saved! Serialization error: "
                 .. serializeErr)
             -- Don't call API or schedule a save retry if serializeation fails.
             continue
         end
+        top._isSaving = true
+        self._currentlyProcessingSaves[top] = true
         local saveSuccess, versionOrErr = self._dataStoreWrapper:SetAsync(
             top._player,
             serialized
         )
+        top._isSaving = false
+        self._currentlyProcessingSaves[top] = nil
         if not saveSuccess then
             warn("Data saving error: ", versionOrErr)
 
             -- Queue up a retry on failure
             if Config.SaveRetries.Enabled
-            and lastQueueInfo.retryCount <= Config.SaveRetries.Max then
+            and lastQueueInfo.retryCount < Config.SaveRetries.Max then
                 self._queuedSaves[top] = {
                     saveType = lastQueueInfo.saveType,
                     retryCount = lastQueueInfo.retryCount + 1,
@@ -120,6 +129,12 @@ function SaveScheduler.__index.ScheduleSave(
     save: Save,
     saveType: SaveType
 )
+    if not save:IsSafeToSave() then
+        warn("Could not create " .. saveType .. " for " .. save._player.Name
+            .. " because the save had an error when the session started.")
+        return
+    end
+
     -- Don't schedule any additional saves over an exit save
     local queuedSaveInfo = self._queuedSaves[save]
     if queuedSaveInfo and queuedSaveInfo.saveType == "ExitSave" then
@@ -140,6 +155,11 @@ function SaveScheduler.__index.ScheduleSave(
         scheduledClockTime = scheduledClockTime,
     }
     self:ProcessQueue()
+end
+
+function SaveScheduler.__index.AllSavesHaveBeenProcessed(self: SaveScheduler)
+    return next(self._queuedSaves) == nil
+        and next(self._currentlyProcessingSaves) == nil
 end
 
 return SaveScheduler

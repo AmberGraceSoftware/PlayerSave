@@ -57,6 +57,7 @@ function Registry.__index.CloseSave(
     if not save then
         return nil
     end
+    self._map[player] = nil
     save._closed = true
     self.SaveClosed:Fire(function()
         return player, save
@@ -83,6 +84,24 @@ function Registry.__index.WaitFor(
         self._onRegistryInsertOrHeartbeat.Event:Wait()
     end
     return nil
+end
+
+function Registry.__index.GetOpenSaves(self: Registry): {Save}
+    local list = {}
+    for _, save in self._map do
+        table.insert(list, save)
+    end
+    return list
+end
+
+function Registry.__index.GetLoadedSaves(self: Registry): {Save}
+    local list = {}
+    for _, save in self._map do
+        if save:IsLoaded() then
+            table.insert(list, save)
+        end
+    end
+    return list
 end
 
 return Registry
