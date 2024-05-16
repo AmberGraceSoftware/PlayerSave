@@ -22,10 +22,12 @@ end
 
 function SaveFormat.SerializeSaveData(params: {
     data: {[string]: any},
+    saveType: string,
     libraryVersion: string
 })
     return {
         PlayerSaveLibraryVersion = params.libraryVersion,
+        SaveType = params.saveType,
         SaveData = SerializeUtil.SerializeToStorable(params.data),
         TimestampUTC = os.time(),
         PlaceVersion = game.PlaceVersion,

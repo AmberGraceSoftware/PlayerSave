@@ -75,6 +75,7 @@ function SaveScheduler.__index.ProcessQueue(self: SaveScheduler)
         local serializeSuccess, serializeErr = pcall(function()
             serialized = SaveFormat.SerializeSaveData({
                 data = top._data,
+                saveType = lastQueueInfo.saveType,
                 libraryVersion = self._libraryVersion
             })
         end)

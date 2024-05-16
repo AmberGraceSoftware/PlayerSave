@@ -97,14 +97,10 @@ type ConfigPartial_Logging = {
 type Config_BindToClose = {
     WaitForSetAsyncResponsesWhileInStudio: boolean,
     TimeoutWhileInStudio: number,
-    SaveRetryEnabled: boolean,
-    SaveRetryInterval: number,
 }
 type ConfigPartial_BindToClose = {
     WaitForSetAsyncResponsesWhileInStudio: boolean?,
     TimeoutWhileInStudio: number?,
-    SaveRetryEnabled: boolean?,
-    SaveRetryInterval: number?,
 }
 
 export type GroupMembersAllowEntry = {}
@@ -209,8 +205,6 @@ local defaultConfig: Config = {
     BindToClose = {
         WaitForSetAsyncResponsesWhileInStudio = false,
         TimeoutWhileInStudio = 10,
-        SaveRetryEnabled = true,
-        SaveRetryInterval = 6,
     },
 
     -- (Opt-out) Debugger
