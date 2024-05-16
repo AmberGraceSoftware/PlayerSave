@@ -21,8 +21,7 @@ local function serializeObject(object: any): any
 	if serializerId then
 		local serializer = serializersById[serializerId]
 		
-		if serializerId == "Raw"
-		or serializerId == "table" then
+		if serializerId == "@@Raw" then
 			return object
 		end
 
@@ -53,7 +52,7 @@ local function deserializeObject(serialValue: any): any
 end
 
 -- Define serializers
-serializersById.Raw = {
+serializersById["@@Raw"] = {
 	types = { "number", "string", "boolean", "nil", "buffer" },
 	deserialize = function(symbolicValue: any)
 		return symbolicValue
@@ -62,7 +61,7 @@ serializersById.Raw = {
 		return object
 	end,
 }
-serializersById.EnumItem = {
+serializersById["@@EnumItem"] = {
 	types = { "EnumItem" },
 	deserialize = function(symbolicValue: {string})
 		return (Enum :: any)[symbolicValue[1]][symbolicValue[2]]
@@ -74,7 +73,7 @@ serializersById.EnumItem = {
 		}
 	end,
 }
-serializersById.Table = {
+serializersById["@@Table"] = {
 	types = { "table" },
 	deserialize = function(symbolicValue: {[any]: any})
 		if #symbolicValue > 0 then
@@ -145,7 +144,7 @@ do
 		-- Enum.Axis.Back,
 		-- Enum.Axis.Front
 	}
-	serializersById.Axes = {
+	serializersById["@@Axes"] = {
 		types = {"Axes"},
 		deserialize = function(symbolicValue: {any})
 			local axisList: {Enum.Axis | Enum.NormalId} = {}
@@ -172,7 +171,7 @@ do
 		end,
 	}
 end
-serializersById.BrickColor = {
+serializersById["@@BrickColor"] = {
 	types = {"BrickColor"},
 	deserialize = function(number: number)
 		return BrickColor.new(number)
@@ -181,7 +180,7 @@ serializersById.BrickColor = {
 		return brickColor.Number
 	end,
 }
-serializersById.CFrame = {
+serializersById["@@CFrame"] = {
 	types = {"CFrame"},
 	deserialize = function(components: {number})
 		return CFrame.new(unpack(components))
@@ -190,7 +189,7 @@ serializersById.CFrame = {
 		return {cf:GetComponents()}
 	end,
 }
-serializersById.Color3 = {
+serializersById["@@Color3"] = {
 	types = {"Color3"},
 	deserialize = function(rgb: {number})
 		return Color3.new(unpack(rgb) :: number)
@@ -199,7 +198,7 @@ serializersById.Color3 = {
 		return {color.R, color.G, color.B}
 	end,
 }
-serializersById.ColorSequence = {
+serializersById["@@ColorSequence"] = {
 	types = {"ColorSequence"},
 	deserialize = function(symbolicValue: {any})
 		local keypoints = table.create(#symbolicValue)
@@ -224,7 +223,7 @@ serializersById.ColorSequence = {
 		return symbolicValue
 	end,
 }
-serializersById.ColorSequenceKeypoint = {
+serializersById["@@ColorSequenceKeypoint"] = {
 	types = {"ColorSequenceKeypoint"},
 	deserialize = function(symbolicValue: {any})
 		return ColorSequenceKeypoint.new(
@@ -248,7 +247,7 @@ do
 		Enum.NormalId.Back,
 		Enum.NormalId.Front
 	}
-	serializersById.Faces = {
+	serializersById["@@Faces"] = {
 		types = {"Faces"},
 		deserialize = function(symbolicValue: {any})
 			local faceList: {Enum.NormalId} = {}
@@ -275,7 +274,7 @@ do
 		end,
 	}
 end
-serializersById.NumberRange = {
+serializersById["@@NumberRange"] = {
 	types = {"NumberRange"},
 	deserialize = function(symbolicValue: {number})
 		return NumberRange.new(unpack(symbolicValue))
@@ -284,7 +283,7 @@ serializersById.NumberRange = {
 		return {range.Min, range.Max}
 	end,
 }
-serializersById.NumberSequence = {
+serializersById["@@NumberSequence"] = {
 	types = {"NumberSequence"},
 	deserialize = function(symbolicValue: {any})
 		local keypoints = table.create(#symbolicValue)
@@ -309,7 +308,7 @@ serializersById.NumberSequence = {
 		return symbolicValue
 	end,
 }
-serializersById.NumberSequenceKeypoint = {
+serializersById["@@NumberSequenceKeypoint"] = {
 	types = {"NumberSequenceKeypoint"},
 	deserialize = function(symbolicValue: {any})
 		return NumberSequenceKeypoint.new(unpack(symbolicValue))
@@ -322,7 +321,7 @@ serializersById.NumberSequenceKeypoint = {
 		}
 	end,
 }
-serializersById.PathWaypoint = {
+serializersById["@@PathWaypoint"] = {
 	types = {"PathWaypoint"},
 	deserialize = function(symbolicValue: {any})
 		return PathWaypoint.new(
@@ -337,7 +336,7 @@ serializersById.PathWaypoint = {
 		}
 	end,
 }
-serializersById.PhysicalProperties = {
+serializersById["@@PhysicalProperties"] = {
 	types = {"PhysicalProperties"},
 	deserialize = function(symbolicValue: {any})
 		return PhysicalProperties.new(unpack(symbolicValue))
@@ -352,7 +351,7 @@ serializersById.PhysicalProperties = {
 		}
 	end,
 }
-serializersById.Ray = {
+serializersById["@@Ray"] = {
 	types = {"Ray"},
 	deserialize = function(symbolicValue: {any})
 		return Ray.new(
@@ -367,7 +366,7 @@ serializersById.Ray = {
 		}
 	end,
 }
-serializersById.Rect = {
+serializersById["@@Rect"] = {
 	types = {"Rect"},
 	deserialize = function(symbolicType: {any})
 		return Rect.new(unpack(symbolicType))
@@ -381,7 +380,7 @@ serializersById.Rect = {
 		}
 	end,
 }
-serializersById.Region3 = {
+serializersById["@@Region3"] = {
 	types = {"Region3"},
 	deserialize = function(symbolicType: {any})
 		return Region3.new(
@@ -398,7 +397,7 @@ serializersById.Region3 = {
 		}
 	end,
 }
-serializersById.TweenInfo = {
+serializersById["@@TweenInfo"] = {
 	types = {"TweenInfo"},
 	deserialize = function(symbolicValue: {any})
 		return TweenInfo.new(
@@ -421,7 +420,7 @@ serializersById.TweenInfo = {
 		}
 	end,
 }
-serializersById.UDim = {
+serializersById["@@UDim"] = {
 	types = {"UDim"},
 	deserialize = function(symbolicValue: {any})
 		return UDim.new(unpack(symbolicValue))
@@ -433,7 +432,7 @@ serializersById.UDim = {
 		}
 	end,
 }
-serializersById.UDim2 = {
+serializersById["@@UDim2"] = {
 	types = {"UDim2"},
 	deserialize = function(symbolicValue: {any})
 		return (UDim2 :: any).new(unpack(symbolicValue))
@@ -447,7 +446,7 @@ serializersById.UDim2 = {
 		}
 	end,
 }
-serializersById.Vector2 = {
+serializersById["@@Vector2"] = {
 	types = {"Vector2"},
 	deserialize = function(symbolicValue: any)
 		return Vector2.new(unpack(symbolicValue))
@@ -459,7 +458,7 @@ serializersById.Vector2 = {
 		}
 	end,
 }
-serializersById.Vector2int16 = {
+serializersById["@@Vector2int16"] = {
 	types = {"Vector2int16"},
 	deserialize = function(symbolicValue: any)
 		return Vector2int16.new(unpack(symbolicValue))
@@ -471,7 +470,7 @@ serializersById.Vector2int16 = {
 		}
 	end,
 }
-serializersById.Vector3 = {
+serializersById["@@Vector3"] = {
 	types = {"Vector3"},
 	deserialize = function(symbolicValue: any)
 		return Vector3.new(unpack(symbolicValue))
@@ -484,7 +483,7 @@ serializersById.Vector3 = {
 		}
 	end,
 }
-serializersById.Vector3int16 = {
+serializersById["@@Vector3int16"] = {
 	types = {"Vector3int16"},
 	deserialize = function(symbolicValue: any)
 		return Vector3int16.new(unpack(symbolicValue))
@@ -509,5 +508,8 @@ local StorableUtil = {}
 
 StorableUtil.Serialize = serializeObject
 StorableUtil.Deserialize = deserializeObject
+function StorableUtil.ValueIsStorable(value: any)
+	return rbxTypeToSerializerId[typeof(value)] ~= nil
+end
 
 return StorableUtil
