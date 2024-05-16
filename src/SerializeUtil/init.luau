@@ -57,7 +57,6 @@ function SerializeUtil.KeyListToString(keyList: KeyList, lastI: number?): string
 end
 
 function SerializeUtil.ValidateKeyList(keyList: KeyList, minSize: number)
-    local expectedI = 1
     for i, entry in keyList do
         local entryType = typeof(entry)
         if entryType ~= "string"
@@ -65,10 +64,6 @@ function SerializeUtil.ValidateKeyList(keyList: KeyList, minSize: number)
             error("Invalid KeyPath: expected type string | number for "
                 .. "element " .. tostring(i) .. " of keyPath, got "
                 .. entryType)
-        end
-        if i ~= expectedI then
-            error("Invalid KeyPath: expected all keys to be numbers; got "
-                .. "key '" .. tostring(i) .. "'")
         end
     end
     if #keyList < minSize then

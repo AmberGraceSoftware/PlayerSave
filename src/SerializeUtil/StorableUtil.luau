@@ -205,7 +205,7 @@ serializersById["@@ColorSequence"] = {
 		for _, serialKP in symbolicValue do
 			table.insert(
 				keypoints,
-				serializersById.ColorSequenceKeypoint.deserialize(serialKP)
+				serializersById["@@ColorSequenceKeypoint"].deserialize(serialKP)
 			)
 		end
 		
@@ -217,7 +217,7 @@ serializersById["@@ColorSequence"] = {
 		for _, keypoint in kps do
 			table.insert(
 				symbolicValue,
-				serializersById.ColorSequenceKeypoint.serialize(keypoint)
+				serializersById["@@ColorSequenceKeypoint"].serialize(keypoint)
 			)
 		end
 		return symbolicValue
@@ -228,13 +228,13 @@ serializersById["@@ColorSequenceKeypoint"] = {
 	deserialize = function(symbolicValue: {any})
 		return ColorSequenceKeypoint.new(
 			symbolicValue[1],
-			serializersById.Color3.deserialize(symbolicValue[2])
+			serializersById["@@Color3"].deserialize(symbolicValue[2])
 		)
 	end,
 	serialize = function(kp)
 		return {
 			kp.Time,
-			serializersById.Color3.serialize(kp.Value),
+			serializersById["@@Color3"].serialize(kp.Value),
 		}
 	end,
 }
@@ -290,7 +290,7 @@ serializersById["@@NumberSequence"] = {
 		for _, serialKP in symbolicValue do
 			table.insert(
 				keypoints,
-				serializersById.NumberSequenceKeypoint.deserialize(serialKP)
+				serializersById["@@NumberSequenceKeypoint"].deserialize(serialKP)
 			)
 		end
 		
@@ -302,7 +302,7 @@ serializersById["@@NumberSequence"] = {
 		for _, keypoint in kps do
 			table.insert(
 				symbolicValue,
-				serializersById.NumberSequenceKeypoint.serialize(keypoint)
+				serializersById["@@NumberSequenceKeypoint"].serialize(keypoint)
 			)
 		end
 		return symbolicValue
@@ -325,14 +325,14 @@ serializersById["@@PathWaypoint"] = {
 	types = {"PathWaypoint"},
 	deserialize = function(symbolicValue: {any})
 		return PathWaypoint.new(
-			serializersById.Vector3.deserialize(symbolicValue[1]),
-			serializersById.EnumItem.deserialize(symbolicValue[2])
+			serializersById["@@Vector3"].deserialize(symbolicValue[1]),
+			serializersById["@@EnumItem"].deserialize(symbolicValue[2])
 		)
 	end,
 	serialize = function(object: PathWaypoint)
 		return {
-			serializersById.Vector3.serialize(object.Position),
-			serializersById.EnumItem.serialize(object.Action),
+			serializersById["@@Vector3"].serialize(object.Position),
+			serializersById["@@EnumItem"].serialize(object.Action),
 		}
 	end,
 }
@@ -355,14 +355,14 @@ serializersById["@@Ray"] = {
 	types = {"Ray"},
 	deserialize = function(symbolicValue: {any})
 		return Ray.new(
-			serializersById.Vector3.deserialize(symbolicValue[1]),
-			serializersById.Vector3.deserialize(symbolicValue[2])
+			serializersById["@@Vector3"].deserialize(symbolicValue[1]),
+			serializersById["@@Vector3"].deserialize(symbolicValue[2])
 		)
 	end,
 	serialize = function(object: Ray)
 		return {
-			serializersById.Vector3.serialize(object.Origin),
-			serializersById.Vector3.serialize(object.Direction),
+			serializersById["@@Vector3"].serialize(object.Origin),
+			serializersById["@@Vector3"].serialize(object.Direction),
 		}
 	end,
 }
@@ -384,16 +384,16 @@ serializersById["@@Region3"] = {
 	types = {"Region3"},
 	deserialize = function(symbolicType: {any})
 		return Region3.new(
-			serializersById.Vector3.deserialize(symbolicType[1]),
-			serializersById.Vector3.deserialize(symbolicType[2])
+			serializersById["@@Vector3"].deserialize(symbolicType[1]),
+			serializersById["@@Vector3"].deserialize(symbolicType[2])
 		)
 	end,
 	serialize = function(object: Region3)
 		local pos = object.CFrame.Position
 		local hSize = object.Size / 2
 		return {
-			serializersById.Vector3.serialize(pos - hSize),
-			serializersById.Vector3.serialize(pos + hSize),
+			serializersById["@@Vector3"].serialize(pos - hSize),
+			serializersById["@@Vector3"].serialize(pos + hSize),
 		}
 	end,
 }
@@ -402,8 +402,8 @@ serializersById["@@TweenInfo"] = {
 	deserialize = function(symbolicValue: {any})
 		return TweenInfo.new(
 			symbolicValue[1],
-			serializersById.EnumItem.deserialize(symbolicValue[2]),
-			serializersById.EnumItem.deserialize(symbolicValue[3]),
+			serializersById["@@EnumItem"].deserialize(symbolicValue[2]),
+			serializersById["@@EnumItem"].deserialize(symbolicValue[3]),
 			symbolicValue[4],
 			symbolicValue[5],
 			symbolicValue[6]
@@ -412,8 +412,8 @@ serializersById["@@TweenInfo"] = {
 	serialize = function(tween: TweenInfo)
 		return {
 			tween.Time :: any,
-			serializersById.EnumItem.serialize(tween.EasingStyle),
-			serializersById.EnumItem.serialize(tween.EasingDirection),
+			serializersById["@@EnumItem"].serialize(tween.EasingStyle),
+			serializersById["@@EnumItem"].serialize(tween.EasingDirection),
 			tween.RepeatCount,
 			tween.Reverses,
 			tween.DelayTime

@@ -27,6 +27,10 @@ function SaveFormat.SerializeSaveData(params: {
     return {
         PlayerSaveLibraryVersion = params.libraryVersion,
         SaveData = SerializeUtil.SerializeToStorable(params.data),
+        TimestampUTC = os.time(),
+        PlaceVersion = game.PlaceVersion,
+        PlaceId = game.PlaceId,
+        GameId = game.GameId,
     }
 end
 
