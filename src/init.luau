@@ -8,7 +8,7 @@
 
     :::warning
     PlayerSave is still a work in progress and does not currently have a full
-    release! Please avoiding PlayerSave in production-bound projects, as the
+    release! Please avoid using PlayerSave in production-bound projects, as the
     library is not fully tested, and the API may be subject to change
     :::
     
@@ -34,6 +34,7 @@ local PlayerSaveServer = require(script.Server)
 local Registry = require(script.Registry)
 export type KeyPath = Save.KeyPath
 export type Save = Save.Save
+export type DeepSelectionQuery = Save.DeepSelectionQuery
 export type Config = Config.Config
 export type ConfigPartial = Config.ConfigPartial
 

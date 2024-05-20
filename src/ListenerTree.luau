@@ -13,6 +13,9 @@ type Node = {
     children: ChildMap?,
     listenerSet: ListenerSet?,
 }
+export type DeepSelectionQuery = {
+    [string | number]: boolean | DeepSelectionQuery
+}
 
 local ListenerTree = {}
 ListenerTree.__index = {}

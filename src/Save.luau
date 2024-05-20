@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local ListenerTree = require(script.Parent.ListenerTree)
 local SerializeUtil = require(script.Parent.SerializeUtil)
 export type KeyPath = SerializeUtil.KeyPath
+export type DeepSelectionQuery = ListenerTree.DeepSelectionQuery
 
 local Save = {}
 Save.__index = {}
@@ -54,6 +55,32 @@ function Save.__index.Get(
         return defaultValue
     end
     return returnValue
+end
+
+local function getFromSelectionQuery(
+    data: {[string | number]: any},
+    query: DeepSelectionQuery
+)
+    local result = {}
+    for k, marker in query do
+        local dataAtValue = data[k]
+        if typeof(marker) == "table" then
+            if typeof(dataAtValue) == "table" then
+                result[k] = getFromSelectionQuery(data[k], marker)
+            else
+                result[k] = dataAtValue
+            end
+        elseif marker == true then
+            result[k] = dataAtValue
+        end
+    end
+    return result
+end
+function Save.__index.GetSelection(
+    self: Save,
+    query: DeepSelectionQuery
+)
+    return getFromSelectionQuery(self._data, query)
 end
 
 function Save.__index.Set(
