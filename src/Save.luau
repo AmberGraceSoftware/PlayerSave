@@ -22,6 +22,8 @@ function Save.new(player: Player)
     self._player = player
     self._data = {}
     self._listenerTree = ListenerTree.new()
+    self._anyKeypathListeners = {}
+        :: {[(keyList: SerializeUtil.KeyList) -> ()]: boolean}
 
     setmetatable(self, Save)
     return self
@@ -192,10 +194,17 @@ function Save.__index.Set(
         oldValue,
         newValue
     )
+    local keyListListenersHit = {}
+    for listener in self._anyKeypathListeners do
+        table.insert(keyListListenersHit, listener)
+    end
 
     rootTable[finalKey] = newValue
     for _, listener in listenersHit do
         listener(newValue)
+    end
+    for _, listener in keyListListenersHit do
+        listener(keyList)
     end
 end
 
@@ -346,6 +355,27 @@ function Save.__index.Subscribe(
         end
         unsubscribed = true
         self._listenerTree:Unsubscribe(keyList, spawnListener)
+    end
+end
+
+function Save.__index.SubscribeAnyKeypathWasSet(
+    self: Save,
+    listener: (keyList: SerializeUtil.KeyList) -> ()
+)
+    local unsubscribed = false
+    local function spawnListener(keyList: SerializeUtil.KeyList)
+        if unsubscribed then
+            return
+        end
+        task.spawn(listener, keyList)
+    end
+    self._anyKeypathListeners[spawnListener] = true
+    return function()
+        if unsubscribed then
+            return
+        end
+        unsubscribed = true
+        self._anyKeypathListeners[spawnListener] = nil
     end
 end
 
