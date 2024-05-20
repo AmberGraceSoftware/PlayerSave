@@ -22,7 +22,7 @@ function Save.new(player: Player)
     self._isSaving = false
     self._skipDataValidation = false
     self._player = player
-    self._data = {}
+    self._data = {} :: {[string]: any}
     self._listenerTree = ListenerTree.new()
     self._anyKeypathListeners = {}
         :: {[(keyList: KeyList) -> ()]: boolean}
@@ -140,7 +140,7 @@ function Save.__index.Set(
 
     -- Traverse parent tables and validate if our keys are strings or sequential
     -- numbers
-    local rootTable = self._data
+    local rootTable: {[string | number]: any} = self._data
     for i = 1, #keyList - 1 do
         local key = keyList[i]
         checkKey(rootTable, key, i, keyList)

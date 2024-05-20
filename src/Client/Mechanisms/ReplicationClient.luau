@@ -62,6 +62,7 @@ function ReplicationClient.Start(registry: Registry)
             query: {[string]: DeepSelectionQuery},
             values: {[string]: any}
         )
+            print("Replication event", target, query, values)
             if not target then
                 return
             end
@@ -83,7 +84,9 @@ function ReplicationClient.Start(registry: Registry)
                     }
                 end
             else
+                save._skipDataValidation = true
                 save:SetInSelection(query, values)
+                save._skipDataValidation = false
                 initializeSaveIdempotent(save)
             end
         end)
@@ -96,7 +99,9 @@ function ReplicationClient.Start(registry: Registry)
         local queue = onLoadSelectionQueue[player]
         if queue then
             onLoadSelectionQueue[player] = nil
+            save._skipDataValidation = true
             save:SetInSelection(queue.query, queue.values)
+            save._skipDataValidation = false
             initializeSaveIdempotent(save)
         end
     end)

@@ -61,6 +61,30 @@ function ReplicationServer.Start(registry: Types.Registry)
             end
         end
     end
+    local function getInitialValuesFromVisibilityConfig(
+        save: Save,
+        visibilityConfig: DeepSelectionQuery
+    ): ({[string]: DeepSelectionQuery}, {[string]: any})
+        if typeof(visibilityConfig) == "boolean" then
+            if visibilityConfig then
+                local allKeysQuery = {}
+                for k in save._data do
+                    allKeysQuery[k] = true
+                end
+                return allKeysQuery, save._data
+            end
+            return {}, {}
+        else
+            local allKeysQuery = {}
+            for k, childConfig in visibilityConfig do
+                if typeof(k) == "number" then
+                    continue
+                end
+                allKeysQuery[k] = childConfig
+            end
+            return allKeysQuery, save:GetSelection(allKeysQuery)
+        end
+    end
 
     -- Listen to Save events
     local unsubscribesByPlayer: {[Player]: {() -> ()}}  = {}
@@ -75,11 +99,16 @@ function ReplicationServer.Start(registry: Types.Registry)
             replicateEvent:FireClient(
                 player,
                 player,
-                Config.DataVisibility.VisibleToOwnClient,
-                save:GetSelection(Config.DataVisibility.VisibleToOwnClient)
+                getInitialValuesFromVisibilityConfig(
+                    save,
+                    Config.DataVisibility.VisibleToOwnClient
+                )
             )
-            local othersInitSelection
-                = save:GetSelection(Config.DataVisibility.VisibleToAllClients)
+            local othersInitQuery, othersInitValues = 
+                getInitialValuesFromVisibilityConfig(
+                    save,
+                    Config.DataVisibility.VisibleToAllClients
+                )
             for _, other in Players:GetPlayers() do
                 if other == player then
                     continue
@@ -87,8 +116,8 @@ function ReplicationServer.Start(registry: Types.Registry)
                 replicateEvent:FireClient(
                     other,
                     player,
-                    Config.DataVisibility.VisibleToAllClients,
-                    othersInitSelection
+                    othersInitQuery,
+                    othersInitValues
                 )
             end
             
@@ -134,6 +163,9 @@ function ReplicationServer.Start(registry: Types.Registry)
     RunService.Heartbeat:Connect(function()
         task.defer(function()
             for player, accumulatedQuery in playerToSelfAccumulatedQuery do
+                if not next(accumulatedQuery) then
+                    continue
+                end
                 local save = registry:Get(player)
                 if not save or save._closed then
                     continue
@@ -151,6 +183,9 @@ function ReplicationServer.Start(registry: Types.Registry)
                 playerToSelfAccumulatedQuery[player] = {}
             end
             for player, accumulatedQuery in playerToOthersAccumulatedQuery do
+                if not next(accumulatedQuery) then
+                    continue
+                end
                 local save = registry:Get(player)
                 if not save or save._closed then
                     continue
