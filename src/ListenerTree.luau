@@ -229,6 +229,45 @@ function ListenerTree.__index.GetListenersHit(
     return listenersHit
 end
 
+local function addListenersInDeepQuery(
+    listOutput: {Listener},
+    query: DeepSelectionQuery,
+    node: Node
+)
+    if query == false then
+        return
+    end
+
+    -- Add ancestor listeners + listeners at each leaf of the query
+    if node.listenerSet then
+        for listener in node.listenerSet do
+            table.insert(listOutput, listener)
+        end
+    end
+    if typeof(query) == "boolean" then
+        addAllChildListeners(listOutput, node)
+    else
+        if not node.children then
+            return
+        end
+        for key, subQuery in query do
+            local childNode = node.children[key]
+            if not childNode then
+                continue
+            end
+            addListenersInDeepQuery(listOutput, subQuery, childNode)
+        end
+    end
+end
+function ListenerTree.__index.GetListenersHitInSelection(
+    self: ListenerTree,
+    query: DeepSelectionQuery
+): {Listener}
+    local listenersHit: {Listener} = {}
+    addListenersInDeepQuery(listenersHit, query, self._root)
+    return listenersHit
+end
+
 function ListenerTree.__index.FireAllListeners(
     self: ListenerTree,
     currentDataTree: any
