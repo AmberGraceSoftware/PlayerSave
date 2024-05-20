@@ -10,7 +10,7 @@ type KeyList = Types.KeyList
 local ReplicationServer = {}
 
 function ReplicationServer.Start(registry: Types.Registry)
-    local replicateEvent = Instance.new("BindableEvent")
+    local replicateEvent = Instance.new("RemoteEvent")
     replicateEvent.Name = "ReplicateData"
     replicateEvent.Parent = script.Parent.Parent.Parent
 
@@ -72,7 +72,8 @@ function ReplicationServer.Start(registry: Types.Registry)
             end
 
             -- Send initial data replication payload
-            replicateEvent:Fire(
+            replicateEvent:FireClient(
+                player,
                 player,
                 Config.DataVisibility.VisibleToOwnClient,
                 save:GetSelection(Config.DataVisibility.VisibleToOwnClient)
@@ -83,7 +84,8 @@ function ReplicationServer.Start(registry: Types.Registry)
                 if other == player then
                     continue
                 end
-                replicateEvent:Fire(
+                replicateEvent:FireClient(
+                    other,
                     player,
                     Config.DataVisibility.VisibleToAllClients,
                     othersInitSelection
@@ -115,7 +117,8 @@ function ReplicationServer.Start(registry: Types.Registry)
             )
         end)
     end)
-    registry.SaveClosed.Event:Connect(function(player)
+    registry.SaveClosed.Event:Connect(function(closure: () -> (Player, Save))
+        local player = closure()
         local unsubscribes = unsubscribesByPlayer[player]
         if unsubscribes then
             unsubscribesByPlayer[player] = nil
@@ -139,7 +142,8 @@ function ReplicationServer.Start(registry: Types.Registry)
                 if not selection then
                     continue
                 end
-                replicateEvent:Fire(
+                replicateEvent:FireClient(
+                    player,
                     player,
                     accumulatedQuery,
                     selection
@@ -159,7 +163,8 @@ function ReplicationServer.Start(registry: Types.Registry)
                     if other == player then
                         continue
                     end
-                    replicateEvent:Fire(
+                    replicateEvent:FireClient(
+                        other,
                         player,
                         accumulatedQuery,
                         selection
