@@ -53,6 +53,40 @@ function PlayerSave.SetConfig(config: ConfigPartial)
         end
     end
     deepMerge(Config, config)
+
+    
+    -- Merge VisibileToAllClients values over VisibleToOwnClient
+    local function deepExtendVisibilityTrees(
+        original: DeepSelectionQuery?,
+        extension: DeepSelectionQuery
+    ): DeepSelectionQuery
+        if typeof(extension) == "boolean" then
+            if extension == true then
+                return true
+            else
+                return if original ~= nil then original else false
+            end
+        else -- typeof(extession) == "table"
+            if typeof(original) == "table" then
+                for k, v in extension do
+                    original[k] = deepExtendVisibilityTrees(original[k], v)
+                end
+                return original
+            elseif original == true then
+                return true
+            else
+                return extension
+            end
+        end
+    end
+    if typeof(Config.DataVisibility.VisibleToAllClients) == "table"
+    and typeof(Config.DataVisibility.VisibleToOwnClient) == "table" then
+        Config.DataVisibility.VisibleToOwnClient
+            = deepExtendVisibilityTrees(
+                Config.DataVisibility.VisibleToOwnClient,
+                Config.DataVisibility.VisibleToAllClients
+            )
+    end
 end
 
 -- Server/client runtime function

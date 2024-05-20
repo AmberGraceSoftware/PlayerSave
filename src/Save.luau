@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local ListenerTree = require(script.Parent.ListenerTree)
 local SerializeUtil = require(script.Parent.SerializeUtil)
 export type KeyPath = SerializeUtil.KeyPath
+export type KeyList = SerializeUtil.KeyList
 export type DeepSelectionQuery = ListenerTree.DeepSelectionQuery
 
 local Save = {}
@@ -23,7 +24,7 @@ function Save.new(player: Player)
     self._data = {}
     self._listenerTree = ListenerTree.new()
     self._anyKeypathListeners = {}
-        :: {[(keyList: SerializeUtil.KeyList) -> ()]: boolean}
+        :: {[(keyList: KeyList) -> ()]: boolean}
 
     setmetatable(self, Save)
     return self
@@ -360,10 +361,10 @@ end
 
 function Save.__index.SubscribeAnyKeypathWasSet(
     self: Save,
-    listener: (keyList: SerializeUtil.KeyList) -> ()
+    listener: (keyList: KeyList) -> ()
 )
     local unsubscribed = false
-    local function spawnListener(keyList: SerializeUtil.KeyList)
+    local function spawnListener(keyList: KeyList)
         if unsubscribed then
             return
         end
