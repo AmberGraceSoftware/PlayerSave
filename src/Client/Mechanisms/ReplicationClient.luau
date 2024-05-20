@@ -45,6 +45,7 @@ function ReplicationClient.Start(registry: Registry)
             return
         end
         save._loaded = true
+        registry.SaveLoaded:Fire(save._player)
     end
     task.spawn(function()
         local replicateEvent =
