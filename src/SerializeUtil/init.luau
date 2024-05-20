@@ -9,6 +9,22 @@ export type KeyPath = string | {string | number}
 
 local SerializeUtil = {}
 
+local function deepCopyTable(table: {[any]: any})
+    local newTable = table.clone(table)
+    for key, value in newTable do
+        if typeof(value) == "table" then
+            newTable[key] = deepCopyTable(value)
+        end
+    end
+    return newTable
+end
+function SerializeUtil.DeepCopyValue<T>(value: T): T
+    if typeof(value) == "table" then
+        return deepCopyTable(value) :: any
+    end
+    return value
+end
+
 function SerializeUtil.KeyListToString(keyList: KeyList, lastI: number?): string
     local output: {string} = {}
     for i, key in keyList do

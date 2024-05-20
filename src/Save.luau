@@ -64,6 +64,13 @@ function Save.__index.Get(
     end
     return returnValue
 end
+function Save.__index.GetDeepCopy(
+    self: Save,
+    keyPath: KeyPath,
+    defaultValue: any?
+): any
+    return SerializeUtil.DeepCopyValue(self:Get(keyPath, defaultValue))
+end
 
 local function getFromSelectionQuery(
     data: {[string | number]: any},
@@ -226,6 +233,13 @@ function Save.__index.Set(
             listener(keyList)
         end
     end
+end
+function Save.__index.SetDeepCopy(
+    self: Save,
+    keyPath: KeyPath,
+    value: any
+)
+    self:Set(keyPath, SerializeUtil.DeepCopyValue(value))
 end
 
 local function setDataInSelection(
