@@ -8,6 +8,8 @@ local RunService = game:GetService("RunService")
 local ListenerTree = require(script.Parent.ListenerTree)
 local SerializeUtil = require(script.Parent.SerializeUtil)
 export type KeyPath = SerializeUtil.KeyPath
+export type KeyList = SerializeUtil.KeyList
+export type DeepSelectionQuery = ListenerTree.DeepSelectionQuery
 
 local Save = {}
 Save.__index = {}
@@ -18,9 +20,16 @@ function Save.new(player: Player)
     self._loaded = false
     self._closed = false
     self._isSaving = false
+    self._skipDataValidation = false
+    self._deferredListenerMap = nil :: {[(value: any) -> ()]: any}?
+    self._deferredKeypathListenerMap = nil :: {
+        [(keyList: KeyList) -> ()]: {string | number}
+    }?
     self._player = player
-    self._data = {}
+    self._data = {} :: {[string]: any}
     self._listenerTree = ListenerTree.new()
+    self._anyKeypathListeners = {}
+        :: {[(keyList: KeyList) -> ()]: boolean}
 
     setmetatable(self, Save)
     return self
@@ -56,6 +65,69 @@ function Save.__index.Get(
     return returnValue
 end
 
+local function getFromSelectionQuery(
+    data: {[string | number]: any},
+    query: DeepSelectionQuery
+): any
+    if typeof(query) == "table" then
+        local result = {}
+        for k, marker in query do
+            local dataAtValue = data[k]
+            if typeof(dataAtValue) == "table" then
+                result[k] = getFromSelectionQuery(data[k], marker)
+            else
+                result[k] = if marker == true
+                    then dataAtValue
+                    else nil
+            end
+        end
+        return result
+    elseif query == true then
+        return data
+    else
+        return nil
+    end
+end
+function Save.__index.GetSelection(
+    self: Save,
+    query: DeepSelectionQuery
+)
+    return getFromSelectionQuery(self._data, query)
+end
+
+local function checkKey(
+    parentTable: {[string | number]: any},
+    key: unknown,
+    debugKeyIndex: number?,
+    debugKeyList: KeyList
+)
+    if typeof(key) == "number" then
+        if key > #parentTable + 1
+        or key < 1
+        or key ~= key
+        or key ~= math.floor(key) then
+            error("Array indices must be sequential! Got key "
+                .. tostring(key)
+                .. " in path "
+                .. SerializeUtil.KeyListToString(debugKeyList, debugKeyIndex)
+                .. "; expected an integer index between 1 and "
+                .. tostring(#parentTable + 1))
+        end
+    elseif typeof(key) == "string" then
+        if not utf8.len(key) then
+            error("Unexpected non-utf8 character for string key '"
+                .. key
+                .. " in path "
+                .. SerializeUtil.KeyListToString(debugKeyList, debugKeyIndex))
+        end
+    else
+        error("Unexpected key '"
+            .. tostring(key)
+            .. "' of type '"
+            .. typeof(key)
+            .. "; expected string or number!")
+    end
+end
 function Save.__index.Set(
     self: Save,
     keyPath: KeyPath,
@@ -69,45 +141,13 @@ function Save.__index.Set(
             .. debug.traceback())
     end
     local keyList = SerializeUtil.ParseKeypath(keyPath, 1)
-    local function checkKey(
-        parentTable: {[string | number]: any},
-        key: unknown,
-        debugKeyIndex: number?
-    )
-        if typeof(key) == "number" then
-            if key > #parentTable + 1
-            or key < 1
-            or key ~= key
-            or key ~= math.floor(key) then
-                error("Array indices must be sequential! Got key "
-                    .. tostring(key)
-                    .. " in path "
-                    .. SerializeUtil.KeyListToString(keyList, debugKeyIndex)
-                    .. "; expected an integer index between 1 and "
-                    .. tostring(#parentTable + 1))
-            end
-        elseif typeof(key) == "string" then
-            if not utf8.len(key) then
-                error("Unexpected non-utf8 character for string key '"
-                    .. key
-                    .. " in path "
-                    .. SerializeUtil.KeyListToString(keyList, debugKeyIndex))
-            end
-        else
-            error("Unexpected key '"
-                .. tostring(key)
-                .. "' of type '"
-                .. typeof(key)
-                .. "; expected string or number!")
-        end
-    end
 
     -- Traverse parent tables and validate if our keys are strings or sequential
     -- numbers
-    local rootTable = self._data
+    local rootTable: {[string | number]: any} = self._data
     for i = 1, #keyList - 1 do
         local key = keyList[i]
-        checkKey(rootTable, key, i)
+        checkKey(rootTable, key, i, keyList)
         local nextTable = rootTable[key]
         if nextTable == nil then
             nextTable = {}
@@ -142,7 +182,7 @@ function Save.__index.Set(
 
     local finalKey = keyList[#keyList]
     local oldValue = rootTable[finalKey]
-    checkKey(rootTable, finalKey)
+    checkKey(rootTable, finalKey, #keyList, keyList)
 
     -- If we're setting the newValue to nil, throw an error if this cuts
     -- an array in the middle
@@ -159,12 +199,204 @@ function Save.__index.Set(
     local listenersHit = self._listenerTree:GetListenersHit(
         keyList,
         oldValue,
-        newValue
+        newValue,
+        self._data
     )
+    local keyListListenersHit = {}
+    for listener in self._anyKeypathListeners do
+        table.insert(keyListListenersHit, listener)
+    end
 
     rootTable[finalKey] = newValue
-    for _, listener in listenersHit do
-        listener(newValue)
+    if self._deferredListenerMap then
+        for listener, value in listenersHit do
+            self._deferredListenerMap[listener] = value
+        end
+    else
+        for listener, value in listenersHit do
+            listener(value)
+        end
+    end
+    if self._deferredKeypathListenerMap then
+        for _, listener in keyListListenersHit do
+            self._deferredKeypathListenerMap[listener] = keyList
+        end
+    else
+        for _, listener in keyListListenersHit do
+            listener(keyList)
+        end
+    end
+end
+
+local function setDataInSelection(
+    parentDataTable: {[string | number]: any},
+    key: string | number,
+    query: DeepSelectionQuery,
+    newValue: any,
+    outputKeyListsChanged: {KeyList},
+    workingKeyList: KeyList,
+    shouldValidateData: boolean
+)
+    -- Leaf values
+    if typeof(query) == "boolean" then
+        if query == false then
+            return
+        end
+        if parentDataTable[key] == newValue then
+            return
+        end
+        if shouldValidateData then
+            local isStorable, reason = SerializeUtil.ValueIsStorable(newValue)
+            if not isStorable then
+                if reason then
+                    error("Error when setting value "
+                        .. tostring(newValue)
+                        .. " at keypath '"
+                        .. SerializeUtil.KeyListToString(workingKeyList)
+                        .. ":\n"
+                        .. reason)
+                end
+                return
+            end
+        end
+        parentDataTable[key] = newValue
+        table.insert(outputKeyListsChanged, table.clone(workingKeyList))
+    else
+        local nextDataTable = parentDataTable[key]
+        if typeof(nextDataTable) ~= "table" then
+            nextDataTable = {}
+            parentDataTable[key] = nextDataTable
+        end
+        if typeof(newValue) ~= "table" then
+            if parentDataTable[key] == newValue then
+                return
+            end
+            if shouldValidateData then
+                local isStorable, reason =
+                    SerializeUtil.ValueIsStorable(newValue)
+                if not isStorable then
+                    if reason then
+                        error("Error when setting value "
+                            .. tostring(newValue)
+                            .. " at keypath '"
+                            .. SerializeUtil.KeyListToString(workingKeyList)
+                            .. ":\n"
+                            .. reason)
+                    end
+                    return
+                end
+            end
+            parentDataTable[key] = newValue
+            table.insert(outputKeyListsChanged, table.clone(workingKeyList))
+            return
+        end
+        if shouldValidateData then
+            for childKey in query do
+                checkKey(nextDataTable, childKey, #workingKeyList + 1,
+                    workingKeyList)
+            end
+        end
+        for childKey, childQuery in query do
+            table.insert(workingKeyList, childKey)
+            setDataInSelection(
+                nextDataTable,
+                childKey,
+                childQuery,
+                newValue[childKey],
+                outputKeyListsChanged,
+                workingKeyList,
+                shouldValidateData
+            )
+            table.remove(workingKeyList)
+        end
+    end
+end
+function Save.__index.SetInSelection(
+    self: Save,
+    query: DeepSelectionQuery,
+    newValues: {[string]: any}
+)
+    if RunService:IsServer() and not self._loaded then
+        warn("Save:SetInSelection() was called on " .. self._player.Name
+            .. "'s save before the save was loaded! This may have been a "
+            .. "mistake, as the value written to the save will get overwritten "
+            .. "once the player's data loads. traceback:\n"
+            .. debug.traceback())
+    end
+    local shouldValidateData = not self._skipDataValidation
+    if shouldValidateData then
+        local queryRootHasAllStringKeys = false
+        if typeof(query) == "table" then
+            queryRootHasAllStringKeys = true
+            for key in query do
+                if typeof(key) ~= "string" then
+                    queryRootHasAllStringKeys = false
+                    break
+                end
+            end
+        end
+        if not queryRootHasAllStringKeys then
+            error("Invalid query: Root level of query must be table with string "
+                .. "keys, got " .. typeof(query))
+        end
+        local valueRootHasAllStringKeys = false
+        if typeof(newValues) ~= "table" then
+            valueRootHasAllStringKeys = true
+            for key in newValues do
+                if typeof(key) ~= "string" then
+                    valueRootHasAllStringKeys = false
+                    break
+                end
+            end
+        end
+        if not valueRootHasAllStringKeys then
+            error("Invalid newValues: Root level of newValues must be table with "
+                .. "string keys, got " .. typeof(newValues))
+        end
+    end
+
+    local keyListsChanged = {}
+    for rootKey in newValues do
+        setDataInSelection(
+            self._data,
+            rootKey,
+            (query :: any)[rootKey],
+            newValues[rootKey],
+            keyListsChanged,
+            {rootKey},
+            shouldValidateData
+        )
+    end
+    local listenersHit = self._listenerTree:GetListenersHitInSelection(
+        query,
+        self._data
+    )
+    local keyListListenersHit = {}
+    for listener in self._anyKeypathListeners do
+        table.insert(keyListListenersHit, listener)
+    end
+
+    if self._deferredListenerMap then
+        for listener, value in listenersHit do
+            self._deferredListenerMap[listener] = value
+        end
+    else
+        for listener, value in listenersHit do
+            listener(value)
+        end
+    end
+    if self._deferredKeypathListenerMap then
+        for _, keyList in keyListsChanged do
+            for _, listener in keyListListenersHit do
+                self._deferredKeypathListenerMap[listener] = keyList
+            end
+        end
+    else
+        for _, keyList in keyListsChanged do
+            for _, listener in keyListListenersHit do
+                listener(keyList)
+            end
+        end
     end
 end
 
@@ -318,6 +550,27 @@ function Save.__index.Subscribe(
     end
 end
 
+function Save.__index.SubscribeAnyKeypathWasSet(
+    self: Save,
+    listener: (keyList: KeyList) -> ()
+)
+    local unsubscribed = false
+    local function spawnListener(keyList: KeyList)
+        if unsubscribed then
+            return
+        end
+        task.spawn(listener, keyList)
+    end
+    self._anyKeypathListeners[spawnListener] = true
+    return function()
+        if unsubscribed then
+            return
+        end
+        unsubscribed = true
+        self._anyKeypathListeners[spawnListener] = nil
+    end
+end
+
 function Save.__index.IsSafeToSave(
     self: Save
 )
@@ -347,6 +600,26 @@ function Save.__index.WaitUntilLoaded(
         RunService.Heartbeat:Wait()
     end
     return self:IsLoaded()
+end
+
+function Save.__index.DeferListeners(self: Save, scopeCallback: () -> ())
+    if self._deferredListenerMap then
+        scopeCallback()
+        return
+    end
+    local valueListenerMap = {}
+    local keyListListenerMap = {}
+    self._deferredListenerMap = valueListenerMap
+    self._deferredKeypathListenerMap = keyListListenerMap
+    task.spawn(scopeCallback)
+    self._deferredListenerMap = nil
+    self._deferredKeypathListenerMap = nil
+    for listener, value in valueListenerMap do
+        listener(value)
+    end
+    for listener, keyList in keyListListenerMap do
+        listener(keyList)
+    end
 end
 
 return Save

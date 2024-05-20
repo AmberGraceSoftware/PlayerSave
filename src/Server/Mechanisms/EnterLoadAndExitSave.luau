@@ -82,7 +82,7 @@ function EnterLoadAndExitSave.Start(
         end
         save._safeToSave = wasSafelyLoaded
         save._loaded = true
-        
+
         if dataToInitialize then
             save._data = dataToInitialize
             save._listenerTree:FireAllListeners(save._data)

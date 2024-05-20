@@ -8,7 +8,7 @@
 
     :::warning
     PlayerSave is still a work in progress and does not currently have a full
-    release! Please avoiding PlayerSave in production-bound projects, as the
+    release! Please avoid using PlayerSave in production-bound projects, as the
     library is not fully tested, and the API may be subject to change
     :::
     
@@ -34,6 +34,7 @@ local PlayerSaveServer = require(script.Server)
 local Registry = require(script.Registry)
 export type KeyPath = Save.KeyPath
 export type Save = Save.Save
+export type DeepSelectionQuery = Save.DeepSelectionQuery
 export type Config = Config.Config
 export type ConfigPartial = Config.ConfigPartial
 
@@ -52,6 +53,40 @@ function PlayerSave.SetConfig(config: ConfigPartial)
         end
     end
     deepMerge(Config, config)
+
+    
+    -- Merge VisibileToAllClients values over VisibleToOwnClient
+    local function deepExtendVisibilityTrees(
+        original: DeepSelectionQuery?,
+        extension: DeepSelectionQuery
+    ): DeepSelectionQuery
+        if typeof(extension) == "boolean" then
+            if extension == true then
+                return true
+            else
+                return if original ~= nil then original else false
+            end
+        else -- typeof(extession) == "table"
+            if typeof(original) == "table" then
+                for k, v in extension do
+                    original[k] = deepExtendVisibilityTrees(original[k], v)
+                end
+                return original
+            elseif original == true then
+                return true
+            else
+                return extension
+            end
+        end
+    end
+    if typeof(Config.DataVisibility.VisibleToAllClients) == "table"
+    and typeof(Config.DataVisibility.VisibleToOwnClient) == "table" then
+        Config.DataVisibility.VisibleToOwnClient
+            = deepExtendVisibilityTrees(
+                Config.DataVisibility.VisibleToOwnClient,
+                Config.DataVisibility.VisibleToAllClients
+            )
+    end
 end
 
 -- Server/client runtime function
