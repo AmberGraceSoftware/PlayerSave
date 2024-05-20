@@ -35,7 +35,7 @@ function ListenerTree.__index.Subscribe(
     listener: Listener
 )
     local node = self._root
-    for key in keyList do
+    for _, key in keyList do
         local children
         if node.children then
             children = node.children
@@ -70,7 +70,7 @@ function ListenerTree.__index.Unsubscribe(
     -- if this listener was not found along that chain.
     local currentNode = self._root
     local nodesHit = {currentNode}
-    for key in keyList do
+    for _, key in keyList do
         local children = currentNode.children
         if not children then
             return
