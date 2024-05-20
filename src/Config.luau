@@ -21,8 +21,7 @@ type ConfigPartial_DataStore = {
 }
 
 type DataVisibilityTree = boolean
-    | {[string]: DataVisibilityTree}
-    | {DataVisibilityTree}
+    | {[string | number]: DataVisibilityTree}
 type Config_DataVisibility = {
     VisibleToOwnClient: DataVisibilityTree,
     VisibleToAllClients: DataVisibilityTree,

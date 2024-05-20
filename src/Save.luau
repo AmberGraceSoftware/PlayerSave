@@ -60,21 +60,25 @@ end
 local function getFromSelectionQuery(
     data: {[string | number]: any},
     query: DeepSelectionQuery
-)
-    local result = {}
-    for k, marker in query do
-        local dataAtValue = data[k]
-        if typeof(marker) == "table" then
+): any
+    if typeof(query) == "table" then
+        local result = {}
+        for k, marker in query do
+            local dataAtValue = data[k]
             if typeof(dataAtValue) == "table" then
                 result[k] = getFromSelectionQuery(data[k], marker)
             else
-                result[k] = dataAtValue
+                result[k] = if marker == true
+                    then dataAtValue
+                    else nil
             end
-        elseif marker == true then
-            result[k] = dataAtValue
         end
+        return result
+    elseif query == true then
+        return data
+    else
+        return nil
     end
-    return result
 end
 function Save.__index.GetSelection(
     self: Save,
