@@ -30,8 +30,16 @@ function ReplicationServer.Start(registry: Types.Registry)
         local index = cursor or 1
         local nextKey = keyList[index]
         local nextQueryMarker = accumulatedQuery[nextKey]
-        local nextAllowed = if typeof(visibilityConfig) == "table"
-            then visibilityConfig[nextKey] else visibilityConfig
+        local nextAllowed
+        if typeof(visibilityConfig) == "table" then
+            -- Map {true} config to allow all keys in array to replicate as well
+            local visibilityKey = if typeof(nextKey) == "number"
+                then next(visibilityConfig) :: any
+                else nextKey
+            nextAllowed = visibilityConfig[visibilityKey]
+        else
+            nextAllowed = visibilityConfig
+        end
         if not nextAllowed then
             return
         end
@@ -39,8 +47,8 @@ function ReplicationServer.Start(registry: Types.Registry)
             if cursor == #keyList then
                 accumulatedQuery[nextKey] = true
             else
-                addToAccumulatedQuery(nextQueryMarker, keyList,
-                    visibilityConfig, index + 1)
+                addToAccumulatedQuery(nextQueryMarker, keyList, nextAllowed,
+                    index + 1)
             end
         elseif nextQueryMarker == nil then
             if cursor == #keyList then
@@ -49,7 +57,7 @@ function ReplicationServer.Start(registry: Types.Registry)
                 local nextAccumulatedQuery = {}
                 accumulatedQuery[nextKey] = nextAccumulatedQuery
                 addToAccumulatedQuery(nextAccumulatedQuery, keyList,
-                    visibilityConfig, index + 1)
+                    nextAllowed, index + 1)
             end
         end
     end
