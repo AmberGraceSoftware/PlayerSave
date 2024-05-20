@@ -21,6 +21,10 @@ function Save.new(player: Player)
     self._closed = false
     self._isSaving = false
     self._skipDataValidation = false
+    self._deferredListenerMap = nil :: {[(value: any) -> ()]: any}?
+    self._deferredKeypathListenerMap = nil :: {
+        [(keyList: KeyList) -> ()]: {string | number}
+    }?
     self._player = player
     self._data = {} :: {[string]: any}
     self._listenerTree = ListenerTree.new()
@@ -195,7 +199,8 @@ function Save.__index.Set(
     local listenersHit = self._listenerTree:GetListenersHit(
         keyList,
         oldValue,
-        newValue
+        newValue,
+        self._data
     )
     local keyListListenersHit = {}
     for listener in self._anyKeypathListeners do
@@ -203,11 +208,23 @@ function Save.__index.Set(
     end
 
     rootTable[finalKey] = newValue
-    for _, listener in listenersHit do
-        listener(newValue)
+    if self._deferredListenerMap then
+        for listener, value in listenersHit do
+            self._deferredListenerMap[listener] = value
+        end
+    else
+        for listener, value in listenersHit do
+            listener(value)
+        end
     end
-    for _, listener in keyListListenersHit do
-        listener(keyList)
+    if self._deferredKeypathListenerMap then
+        for _, listener in keyListListenersHit do
+            self._deferredKeypathListenerMap[listener] = keyList
+        end
+    else
+        for _, listener in keyListListenersHit do
+            listener(keyList)
+        end
     end
 end
 
@@ -350,18 +367,35 @@ function Save.__index.SetInSelection(
             shouldValidateData
         )
     end
-    local listenersHit = self._listenerTree:GetListenersHitInSelection(query)
+    local listenersHit = self._listenerTree:GetListenersHitInSelection(
+        query,
+        self._data
+    )
     local keyListListenersHit = {}
     for listener in self._anyKeypathListeners do
         table.insert(keyListListenersHit, listener)
     end
 
-    for _, listener in listenersHit do
-        listener(newValues)
+    if self._deferredListenerMap then
+        for listener, value in listenersHit do
+            self._deferredListenerMap[listener] = value
+        end
+    else
+        for listener, value in listenersHit do
+            listener(value)
+        end
     end
-    for _, keyList in keyListsChanged do
-        for _, listener in keyListListenersHit do
-            listener(keyList)
+    if self._deferredKeypathListenerMap then
+        for _, keyList in keyListsChanged do
+            for _, listener in keyListListenersHit do
+                self._deferredKeypathListenerMap[listener] = keyList
+            end
+        end
+    else
+        for _, keyList in keyListsChanged do
+            for _, listener in keyListListenersHit do
+                listener(keyList)
+            end
         end
     end
 end
@@ -566,6 +600,26 @@ function Save.__index.WaitUntilLoaded(
         RunService.Heartbeat:Wait()
     end
     return self:IsLoaded()
+end
+
+function Save.__index.DeferListeners(self: Save, scopeCallback: () -> ())
+    if self._deferredListenerMap then
+        scopeCallback()
+        return
+    end
+    local valueListenerMap = {}
+    local keyListListenerMap = {}
+    self._deferredListenerMap = valueListenerMap
+    self._deferredKeypathListenerMap = keyListListenerMap
+    task.spawn(scopeCallback)
+    self._deferredListenerMap = nil
+    self._deferredKeypathListenerMap = nil
+    for listener, value in valueListenerMap do
+        listener(value)
+    end
+    for listener, keyList in keyListListenerMap do
+        listener(keyList)
+    end
 end
 
 return Save

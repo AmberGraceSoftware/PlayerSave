@@ -84,10 +84,12 @@ function ReplicationClient.Start(registry: Registry)
                     }
                 end
             else
-                save._skipDataValidation = true
-                save:SetInSelection(query, values)
-                save._skipDataValidation = false
-                initializeSaveIdempotent(save)
+                save:DeferListeners(function()
+                    save._skipDataValidation = true
+                    save:SetInSelection(query, values)
+                    save._skipDataValidation = false
+                    initializeSaveIdempotent(save)
+                end)
             end
         end)
     end)
@@ -99,10 +101,12 @@ function ReplicationClient.Start(registry: Registry)
         local queue = onLoadSelectionQueue[player]
         if queue then
             onLoadSelectionQueue[player] = nil
-            save._skipDataValidation = true
-            save:SetInSelection(queue.query, queue.values)
-            save._skipDataValidation = false
-            initializeSaveIdempotent(save)
+            save:DeferListeners(function()
+                save._skipDataValidation = true
+                save:SetInSelection(queue.query, queue.values)
+                save._skipDataValidation = false
+                initializeSaveIdempotent(save)
+            end)
         end
     end)
     registry.SaveClosed.Event:Connect(function(closure: () -> (Player, Save))

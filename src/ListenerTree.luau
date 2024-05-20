@@ -127,23 +127,27 @@ function ListenerTree.__index.Unsubscribe(
 end
 
 local function addAllChildListeners(
-    listOutput: {Listener},
-    node: Node
+    outputMap: {[Listener]: any},
+    node: Node,
+    newValue: any
 )
     if not node.children then
         return
     end
-    for _, childNode in node.children do
+    for childKey, childNode in node.children do
+        local childValue = if typeof(newValue) == "table"
+            then newValue[childKey]
+            else newValue
         if childNode.listenerSet then
             for listener in childNode.listenerSet do
-                table.insert(listOutput, listener)
+                outputMap[listener] = childValue
             end
         end
-        addAllChildListeners(listOutput, childNode)
+        addAllChildListeners(outputMap, childNode, childValue)
     end
 end
 local function addChildListenersIfDifferent(
-    listOutput: {Listener},
+    outputMap: {[Listener]: any},
     node: Node,
     oldValue: any,
     newValue: any
@@ -159,16 +163,19 @@ local function addChildListenersIfDifferent(
     -- performing a diff.
     if not bothValuesAreTable then
         if newValue ~= oldValue then
-            addAllChildListeners(listOutput, node)
+            addAllChildListeners(outputMap, node, newValue)
         end
         return
     end
     
     -- Else, add all listeners for this ancestor, and diff children recursively
     for key, childNode in node.children do
+        local childValue = if typeof(newValue) == "table"
+            then newValue[key]
+            else nil
         if childNode.listenerSet then
             for listener in childNode.listenerSet do
-                table.insert(listOutput, listener)
+                outputMap[listener] = childValue
             end
         end
         local nextOldValue = if bothValuesAreTable
@@ -177,7 +184,7 @@ local function addChildListenersIfDifferent(
         local nextNewValue = if bothValuesAreTable
             then newValue[key]
             else false
-        addChildListenersIfDifferent(listOutput, childNode, nextOldValue,
+        addChildListenersIfDifferent(outputMap, childNode, nextOldValue,
             nextNewValue)
     end
 end
@@ -185,19 +192,24 @@ function ListenerTree.__index.GetListenersHit(
     self: ListenerTree,
     keyList: KeyList,
     oldValue: any,
-    newValue: any
-): {Listener}
+    newValue: any,
+    allData: {[string]: any}
+): {[Listener]: any}
     if oldValue == newValue and typeof(oldValue) ~= "table" then
         return {}
     end
     
     -- Get all ancestor listeners hit up to this key
-    local listenersHit: {Listener} = {}
+    local listenersHit: {[Listener]: any} = {}
     local currentNode = self._root
+    local currentData: {[string | number]: any} = allData
     for _, key in keyList do
+        currentData = if typeof(currentData) == "table"
+            then currentData[key]
+            else nil
         if currentNode.listenerSet then
             for listener in currentNode.listenerSet do
-                table.insert(listenersHit, listener)
+                listenersHit[listener] = currentData
             end
         end
         if currentNode.children then
@@ -214,7 +226,7 @@ function ListenerTree.__index.GetListenersHit(
     local finalListeners = currentNode.listenerSet
     if finalListeners then
         for listener in finalListeners do
-            table.insert(listenersHit, listener)
+            listenersHit[listener] = newValue
         end
     end
 
@@ -230,9 +242,10 @@ function ListenerTree.__index.GetListenersHit(
 end
 
 local function addListenersInDeepQuery(
-    listOutput: {Listener},
+    outputMap: {[Listener]: any},
     query: DeepSelectionQuery,
-    node: Node
+    node: Node,
+    currentData: any
 )
     if query == false then
         return
@@ -241,11 +254,11 @@ local function addListenersInDeepQuery(
     -- Add ancestor listeners + listeners at each leaf of the query
     if node.listenerSet then
         for listener in node.listenerSet do
-            table.insert(listOutput, listener)
+            outputMap[listener] = currentData
         end
     end
     if typeof(query) == "boolean" then
-        addAllChildListeners(listOutput, node)
+        addAllChildListeners(outputMap, node, currentData)
     else
         if not node.children then
             return
@@ -255,16 +268,20 @@ local function addListenersInDeepQuery(
             if not childNode then
                 continue
             end
-            addListenersInDeepQuery(listOutput, subQuery, childNode)
+            local childValue = if typeof(currentData) == "table"
+                then currentData[key]
+                else nil
+            addListenersInDeepQuery(outputMap, subQuery, childNode, childValue)
         end
     end
 end
 function ListenerTree.__index.GetListenersHitInSelection(
     self: ListenerTree,
-    query: DeepSelectionQuery
-): {Listener}
-    local listenersHit: {Listener} = {}
-    addListenersInDeepQuery(listenersHit, query, self._root)
+    query: DeepSelectionQuery,
+    currentData: {[string]: any}
+): {[Listener]: any}
+    local listenersHit: {[Listener]: any} = {}
+    addListenersInDeepQuery(listenersHit, query, self._root, currentData)
     return listenersHit
 end
 
