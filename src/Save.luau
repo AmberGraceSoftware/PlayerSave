@@ -14,6 +14,9 @@ export type DeepSelectionQuery = ListenerTree.DeepSelectionQuery
 local Save = {}
 Save.__index = {}
 
+--[=[
+    @class Save
+]=]
 function Save.new(player: Player)
     local self = {}
     self._safeToSave = true
@@ -42,6 +45,13 @@ function Save.__index.PlayerIsStillInGame(self: Save)
         and not self._closed
 end
 
+--[=[
+    @method Get
+    @within Save
+    @param keyPath KeyPath
+    @param defaultValue: any?
+    @return any
+]=]
 function Save.__index.Get(
     self: Save,
     keyPath: KeyPath,
@@ -63,6 +73,13 @@ function Save.__index.Get(
         return defaultValue
     end
     return returnValue
+end
+function Save.__index.GetDeepCopy(
+    self: Save,
+    keyPath: KeyPath,
+    defaultValue: any?
+): any
+    return SerializeUtil.DeepCopyValue(self:Get(keyPath, defaultValue))
 end
 
 local function getFromSelectionQuery(
@@ -128,6 +145,13 @@ local function checkKey(
             .. "; expected string or number!")
     end
 end
+
+--[=[
+    @method Set
+    @within Save
+    @param keyPath KeyPath
+    @param newValue any
+]=]
 function Save.__index.Set(
     self: Save,
     keyPath: KeyPath,
@@ -183,6 +207,25 @@ function Save.__index.Set(
     local finalKey = keyList[#keyList]
     local oldValue = rootTable[finalKey]
     checkKey(rootTable, finalKey, #keyList, keyList)
+
+    -- If the user called :Set() with the existing table as an argument, throw
+    -- an error; this means the user is mutating data that they shouldn't be
+    -- mutating.
+    if oldValue == newValue then
+        if typeof(oldValue) == "table" then
+            error("Attempt to set a table to itself at keypath "
+                .. SerializeUtil.KeyListToString(keyList)
+                .. "!\nThis likely happened because data returend from "
+                .. "save:Get() is being mutated somewhere.\n"
+                .. "You should always use :GetDeepCopy() when mutating a value"
+                .. "in a player's save! See:\n"
+                .. "https://playersave.ambergracesoftware.com/docs/incorrect_api_usage#table-mutations")
+        end
+        return
+    else
+        -- Deep copy any newly-added tables to prevent mutation.
+        newValue = SerializeUtil.DeepCopyValue(newValue)
+    end
 
     -- If we're setting the newValue to nil, throw an error if this cuts
     -- an array in the middle
@@ -523,6 +566,14 @@ function Save.__index.ListSwapRemove(
     return valueToRemove
 end
 
+--[=[
+    @method Subscribe
+    @within Save
+    @param keyPath KeyPath
+    @param listener (value: any) -> ()
+    @param immediatelyCallListener boolean?
+    @return () -> ()
+]=]
 function Save.__index.Subscribe(
     self: Save,
     keyPath: KeyPath,

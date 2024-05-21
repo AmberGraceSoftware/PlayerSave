@@ -9,10 +9,28 @@ export type KeyPath = string | {string | number}
 
 local SerializeUtil = {}
 
+local function deepCopyTable(tableToCopy: {[any]: any})
+    local newTable = table.clone(tableToCopy)
+    for key, value in newTable do
+        if typeof(value) == "table" then
+            newTable[key] = deepCopyTable(value)
+        end
+    end
+    return newTable
+end
+function SerializeUtil.DeepCopyValue<T>(value: T): T
+    if typeof(value) == "table" then
+        return deepCopyTable(value) :: any
+    end
+    return value
+end
+
 function SerializeUtil.KeyListToString(keyList: KeyList, lastI: number?): string
     local output: {string} = {}
     for i, key in keyList do
-        if typeof(key) == "string" then
+        if i == 1 then
+            table.insert(output, tostring(key))
+        elseif typeof(key) == "string" then
             if key:match("[^a-zA-Z0-9_]")
             or key:sub(1, 1):match("[^a-zA-Z]") then
                 local open, close
@@ -41,9 +59,10 @@ function SerializeUtil.KeyListToString(keyList: KeyList, lastI: number?): string
                 table.insert(output, tostring(key))
                 table.insert(output, close)
                 table.insert(output, "]")
+            else
+                table.insert(output, ".")
+                table.insert(output, key)
             end
-            table.insert(output, ".")
-            table.insert(output, key)
         else
             table.insert(output, "[")
             table.insert(output, tostring(key))

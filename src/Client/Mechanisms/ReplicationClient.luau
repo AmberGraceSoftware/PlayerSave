@@ -63,7 +63,6 @@ function ReplicationClient.Start(registry: Registry)
             query: {[string]: DeepSelectionQuery},
             values: {[string]: any}
         )
-            print("Replication event", target, query, values)
             if not target then
                 return
             end
