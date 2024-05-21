@@ -38,14 +38,16 @@ return function()
         end
         tree:Subscribe(keyList, closure)
         local tracker = {
-            expectCallCount = function(expect: any, callCount: number)
-                expect(#newValues).to.equal(callCount)
-            end,
-            expectValues = function(expect: any, valueList: {any})
-                expect(#newValues).to.equal(#valueList)
-                for i = 1, #valueList do
+            expectNewValues = function(expect: any, ...: any)
+                local n = select("#", ...)
+                local valueList = {...}
+                expect(#newValues).to.equal(n)
+                for i = 1, n do
                     expectDeepEqual(expect, newValues[i], valueList[i])
                 end
+            end,
+            expectNoNewValues = function(expect: any)
+                expect(#newValues).to.equal(0)
             end,
             clearValues = function()
                 newValues = {}
@@ -84,16 +86,14 @@ return function()
 
             mockSave.Set({"Coins"}, 10)
 
-            trackerCoins.expectCallCount(expect, 1)
-            trackerCoins.expectValues(expect, {10})
-            trackerName.expectCallCount(expect, 0)
+            trackerCoins.expectNewValues(expect, 10)
+            trackerName.expectNoNewValues(expect)
 
             trackerCoins.clearValues()
             mockSave.Set({"Name"}, "Bob")
 
-            trackerCoins.expectCallCount(expect, 0)
-            trackerName.expectCallCount(expect, 1)
-            trackerName.expectValues(expect, {"Bob"})
+            trackerCoins.expectNoNewValues(expect)
+            trackerName.expectNewValues(expect, "Bob")
 
             trackerName.clearValues()
             trackerCoins.unsubscribe()
@@ -101,8 +101,8 @@ return function()
 
             mockSave.Set({"Name"}, "Bob")
 
-            trackerCoins.expectCallCount(expect, 0)
-            trackerName.expectCallCount(expect, 0)
+            trackerCoins.expectNoNewValues(expect)
+            trackerName.expectNoNewValues(expect)
             expect(tree._root.listenerSet).to.equal(nil)
             expect(tree._root.children).to.equal(nil)
         end)
@@ -117,15 +117,12 @@ return function()
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Currencies", "Shards"}, 20)
 
-            trackerCurrencies.expectCallCount(expect, 2)
-            trackerCurrencies.expectValues(expect,{
+            trackerCurrencies.expectNewValues(expect,
                 {Coins = 10},
                 {Coins = 10, Shards = 20}
-            })
-            trackerCoins.expectCallCount(expect, 1)
-            trackerCoins.expectValues(expect, {10})
-            trackerShards.expectCallCount(expect, 1)
-            trackerShards.expectValues(expect, {20})
+            )
+            trackerCoins.expectNewValues(expect, 10)
+            trackerShards.expectNewValues(expect, 20)
 
             trackerCurrencies.clearValues()
             trackerCoins.clearValues()
@@ -135,19 +132,15 @@ return function()
             mockSave.Set({"Currencies", "Shards"}, 30)
             mockSave.Set({"Currencies", "Coins"}, 40)
 
-            trackerCurrencies.expectCallCount(expect, 0)
-            trackerCoins.expectCallCount(expect, 1)
-            trackerCoins.expectValues(expect, {40})
-            trackerShards.expectCallCount(expect, 0)
+            trackerCurrencies.expectNoNewValues(expect)
+            trackerCoins.expectNewValues(expect, 40)
+            trackerShards.expectNoNewValues(expect)
 
             trackerCoins.clearValues()
             trackerCoins.unsubscribe()
             mockSave.Set({"Currencies", "Coins"}, 50)
             mockSave.Set({"Currencies", "Shards"}, 60)
 
-            trackerCurrencies.expectCallCount(expect, 0)
-            trackerCoins.expectCallCount(expect, 0)
-            trackerShards.expectCallCount(expect, 0)
             expect(tree._root.listenerSet).to.equal(nil)
             expect(tree._root.children).to.equal(nil)
         end)
@@ -162,15 +155,12 @@ return function()
             mockSave.Set({"Currencies"}, {Coins = 10})
             mockSave.Set({"Currencies"}, {Coins = 20, Shards = 20})
             
-            trackerCurrencies.expectCallCount(expect, 2)
-            trackerCurrencies.expectValues(expect,{
+            trackerCurrencies.expectNewValues(expect,
                 {Coins = 10},
                 {Coins = 20, Shards = 20}
-            })
-            trackerCoins.expectCallCount(expect, 2)
-            trackerCoins.expectValues(expect, {10, 20})
-            trackerShards.expectCallCount(expect, 1)
-            trackerShards.expectValues(expect, {20})
+            )
+            trackerCoins.expectNewValues(expect, 10, 20)
+            trackerShards.expectNewValues(expect, 20)
 
             trackerCurrencies.clearValues()
             trackerCoins.clearValues()
@@ -179,18 +169,17 @@ return function()
             trackerCurrencies.unsubscribe()
             mockSave.Set({"Currencies"}, {Shards = 30, Coins = 40})
 
-            trackerCurrencies.expectCallCount(expect, 0)
-            trackerCoins.expectCallCount(expect, 1)
-            trackerCoins.expectValues(expect, {40})
-            trackerShards.expectCallCount(expect, 0)
+            trackerCurrencies.expectNoNewValues(expect)
+            trackerCoins.expectNewValues(expect, 40)
+            trackerShards.expectNoNewValues(expect)
 
             trackerCoins.clearValues()
             trackerCoins.unsubscribe()
             mockSave.Set({"Currencies"}, {Shards = 50, Coins = 60})
 
-            trackerCurrencies.expectCallCount(expect, 0)
-            trackerCoins.expectCallCount(expect, 0)
-            trackerShards.expectCallCount(expect, 0)
+            trackerCurrencies.expectNoNewValues(expect)
+            trackerCoins.expectNoNewValues(expect)
+            trackerShards.expectNoNewValues(expect)
             expect(tree._root.listenerSet).to.equal(nil)
             expect(tree._root.children).to.equal(nil)
         end)
@@ -203,18 +192,16 @@ return function()
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Name"}, "Joey")
 
-            trackerCoins.expectCallCount(expect, 1)
-            trackerCoins.expectValues(expect, {10})
-            trackerName.expectCallCount(expect, 1)
-            trackerName.expectValues(expect, {"Joey"})
+            trackerCoins.expectNewValues(expect, 10)
+            trackerName.expectNewValues(expect, "Joey")
 
             trackerCoins.clearValues()
             trackerName.clearValues()
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Name"}, "Joey")
 
-            trackerCoins.expectCallCount(expect, 0)
-            trackerName.expectCallCount(expect, 0)
+            trackerCoins.expectNoNewValues(expect)
+            trackerName.expectNoNewValues(expect)
             
             trackerCoins.unsubscribe()
             trackerName.unsubscribe()
@@ -222,8 +209,8 @@ return function()
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Name"}, "Joey")
 
-            trackerCoins.expectCallCount(expect, 0)
-            trackerName.expectCallCount(expect, 0)
+            trackerCoins.expectNoNewValues(expect)
+            trackerName.expectNoNewValues(expect)
             expect(tree._root.listenerSet).to.equal(nil)
             expect(tree._root.children).to.equal(nil)
         end)
@@ -238,15 +225,12 @@ return function()
             mockSave.Set({"Currencies"}, {Coins = 10})
             mockSave.Set({"Currencies"}, {Coins = 10, Shards = 20})
             
-            trackerCurrencies.expectCallCount(expect, 2)
-            trackerCurrencies.expectValues(expect,{
+            trackerCurrencies.expectNewValues(expect,
                 {Coins = 10},
                 {Coins = 10, Shards = 20}
-            })
-            trackerCoins.expectCallCount(expect, 1)
-            trackerCoins.expectValues(expect, {10})
-            trackerShards.expectCallCount(expect, 1)
-            trackerShards.expectValues(expect, {20})
+            )
+            trackerCoins.expectNewValues(expect, 10)
+            trackerShards.expectNewValues(expect, 20)
 
             trackerCurrencies.clearValues()
             trackerCoins.clearValues()
@@ -254,24 +238,24 @@ return function()
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Currencies", "Shards"}, 20)
 
-            trackerCurrencies.expectCallCount(expect, 0)
-            trackerCoins.expectCallCount(expect, 0)
-            trackerShards.expectCallCount(expect, 0)
+            trackerCurrencies.expectNoNewValues(expect)
+            trackerCoins.expectNoNewValues(expect)
+            trackerShards.expectNoNewValues(expect)
 
             trackerCurrencies.unsubscribe()
             mockSave.Set({"Currencies"}, {Coins = 10, Shards = 20})
 
-            trackerCurrencies.expectCallCount(expect, 0)
-            trackerCoins.expectCallCount(expect, 0)
-            trackerShards.expectCallCount(expect, 0)
+            trackerCurrencies.expectNoNewValues(expect)
+            trackerCoins.expectNoNewValues(expect)
+            trackerShards.expectNoNewValues(expect)
             
             trackerCoins.unsubscribe()
             trackerShards.unsubscribe()
             mockSave.Set({"Currencies"}, {Coins = 10, Shards = 20})
 
-            trackerCurrencies.expectCallCount(expect, 0)
-            trackerCoins.expectCallCount(expect, 0)
-            trackerShards.expectCallCount(expect, 0)
+            trackerCurrencies.expectNoNewValues(expect)
+            trackerCoins.expectNoNewValues(expect)
+            trackerShards.expectNoNewValues(expect)
             expect(tree._root.listenerSet).to.equal(nil)
             expect(tree._root.children).to.equal(nil)
         end)
