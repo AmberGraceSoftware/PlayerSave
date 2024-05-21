@@ -18,6 +18,11 @@ export type DeepSelectionQuery = boolean
 
 local ListenerTree = {}
 ListenerTree.__index = {}
+ListenerTree.NIL_SYMBOL = setmetatable({}, {
+    __tostring = function()
+        return "@@nil"
+    end
+})
 
 function ListenerTree.new()
     local self = {}
@@ -133,66 +138,63 @@ end
 local function addAllChildListeners(
     outputMap: {[Listener]: any},
     node: Node,
-    newValue: any
+    oldValue: any,
+    newValue: any,
+    addIfOldAndNewAreNil: boolean?
 )
     if not node.children then
         return
     end
     for childKey, childNode in node.children do
-        local childValue = if typeof(newValue) == "table"
+        local childOldValue = if typeof(oldValue) == "table"
+            then oldValue[childKey]
+            else nil
+        local childNewValue = if typeof(newValue) == "table"
             then newValue[childKey]
-            else newValue
-        if childNode.listenerSet then
-            for listener in childNode.listenerSet do
-                outputMap[listener] = childValue
+            else nil
+        if not addIfOldAndNewAreNil then
+            if childOldValue == nil and childNewValue == nil then
+                continue
             end
         end
-        addAllChildListeners(outputMap, childNode, childValue)
+        if childNode.listenerSet then
+            for listener in childNode.listenerSet do
+                outputMap[listener] = if childNewValue == nil
+                    then ListenerTree.NIL_SYMBOL
+                    else childNewValue
+            end
+        end
+        addAllChildListeners(outputMap, childNode, childOldValue, childNewValue,
+            addIfOldAndNewAreNil)
     end
 end
 local function addChildListenersIfDifferent(
     outputMap: {[Listener]: any},
     node: Node,
-    oldValue: any,
-    newValue: any
+    oldValue: {[string | number]: any},
+    newValue: {[string | number]: any}
 )
     if not node.children then
-        return
-    end
-
-    local bothValuesAreTable = (typeof(oldValue) == "table")
-        and (typeof(newValue) == "table")
-
-    -- If we encountered a non-table value, add all/none descendants without
-    -- performing a diff.
-    if not bothValuesAreTable then
-        if newValue ~= oldValue then
-            addAllChildListeners(outputMap, node, newValue)
-        end
         return
     end
     
     -- Else, add all listeners for this ancestor, and diff children recursively
     for key, childNode in node.children do
-        local nextOldValue = if bothValuesAreTable
-            then oldValue[key]
-            else true
-        local nextNewValue = if bothValuesAreTable
-            then newValue[key]
-            else false
-        if typeof(nextOldValue) ~= typeof(nextOldValue)
-        or (
-            (nextOldValue ~= nextNewValue)
-            and typeof(nextNewValue ~= "table")
-        ) then
+        local nextOldValue = oldValue[key]
+        local nextNewValue = newValue[key]
+        if typeof(nextOldValue) == "table"
+        and typeof(nextNewValue) == "table" then
+            addChildListenersIfDifferent(outputMap, childNode, nextOldValue,
+                nextNewValue)
+        elseif nextOldValue ~= nextNewValue then
             if childNode.listenerSet then
                 for listener in childNode.listenerSet do
-                    outputMap[listener] = nextNewValue
+                    outputMap[listener] = if nextNewValue == nil
+                        then ListenerTree.NIL_SYMBOL
+                        else nextNewValue
                 end
             end
-            addAllChildListeners(outputMap, childNode, nextNewValue)
-        else
-            addChildListenersIfDifferent(outputMap, childNode, nextOldValue,
+            addAllChildListeners(outputMap, childNode, nextOldValue,
                 nextNewValue)
         end
     end
@@ -211,7 +213,7 @@ function ListenerTree.__index.GetListenersHit(
     -- Get all ancestor listeners hit up to this key
     local listenersHit: {[Listener]: any} = {}
     local currentNode = self._root
-    local currentData: {[string | number]: any} = allData
+    local currentData: any = allData
     for _, key in keyList do
         if currentNode.listenerSet then
             for listener in currentNode.listenerSet do
@@ -246,7 +248,19 @@ function ListenerTree.__index.GetListenersHit(
     if not finalChildren then
         return listenersHit
     end
-    addChildListenersIfDifferent(listenersHit, currentNode, oldValue, newValue)
+
+
+    local bothValuesAreTable = (typeof(oldValue) == "table")
+        and (typeof(newValue) == "table")
+
+    -- If we encountered a non-table value, add all/none descendants without
+    -- performing a diff.
+    if bothValuesAreTable then
+        addChildListenersIfDifferent(listenersHit, currentNode, oldValue,
+            newValue)
+    else
+        addAllChildListeners(listenersHit, currentNode, oldValue, newValue)
+    end
     return listenersHit
 end
 
@@ -254,7 +268,8 @@ local function addListenersInDeepQuery(
     outputMap: {[Listener]: any},
     query: DeepSelectionQuery,
     node: Node,
-    currentData: any
+    oldValues: any,
+    newValues: any
 )
     if query == false then
         return
@@ -263,11 +278,13 @@ local function addListenersInDeepQuery(
     -- Add ancestor listeners + listeners at each leaf of the query
     if node.listenerSet then
         for listener in node.listenerSet do
-            outputMap[listener] = currentData
+            outputMap[listener] = if newValues == nil
+                then ListenerTree.NIL_SYMBOL
+                else newValues
         end
     end
     if typeof(query) == "boolean" then
-        addAllChildListeners(outputMap, node, currentData)
+        addAllChildListeners(outputMap, node, oldValues, newValues)
     else
         if not node.children then
             return
@@ -277,20 +294,25 @@ local function addListenersInDeepQuery(
             if not childNode then
                 continue
             end
-            local childValue = if typeof(currentData) == "table"
-                then currentData[key]
+            local childOldValue = if typeof(oldValues) == "table"
+                then oldValues[key]
                 else nil
-            addListenersInDeepQuery(outputMap, subQuery, childNode, childValue)
+            local childNewValue = if typeof(newValues) == "table"
+                then newValues[key]
+                else nil
+            addListenersInDeepQuery(outputMap, subQuery, childNode,
+                childOldValue, childNewValue)
         end
     end
 end
 function ListenerTree.__index.GetListenersHitInSelection(
     self: ListenerTree,
     query: DeepSelectionQuery,
-    currentData: {[string]: any}
+    oldData: {[string]: any},
+    newValues: {[string]: any}
 ): {[Listener]: any}
     local listenersHit: {[Listener]: any} = {}
-    addListenersInDeepQuery(listenersHit, query, self._root, currentData)
+    addListenersInDeepQuery(listenersHit, query, self._root, oldData, newValues)
     return listenersHit
 end
 
@@ -299,24 +321,24 @@ function ListenerTree.__index.FireAllListeners(
     currentDataTree: any
 )
     local callbacksToFire = {}
-    local function addRoot(node: Node, value: any)
-        if node.listenerSet then
-            for listener in node.listenerSet do
-                callbacksToFire[listener] = value
-            end
-        end
-        if node.children then
-            for key, child in node.children do
-                addRoot(child, if typeof(value) == "table"
-                    then value[key]
-                    else nil)
-            end
+    if self._root.listenerSet then
+        for listener in self._root.listenerSet do
+            callbacksToFire[listener] = currentDataTree
         end
     end
-    addRoot(self._root, currentDataTree)
-
+    addAllChildListeners(
+        callbacksToFire,
+        self._root,
+        nil,
+        currentDataTree,
+        true
+    )
     for listener, value in callbacksToFire do
-        task.spawn(listener, value)
+        listener(
+            if value == ListenerTree.NIL_SYMBOL
+                then nil
+                else value
+        )
     end
 end
 

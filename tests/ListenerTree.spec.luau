@@ -34,6 +34,9 @@ return function()
             if typeof(value) == "table" then
                 value = SerializeUtil.DeepCopyValue(value)
             end
+            if value == nil then
+                value = ListenerTree.NIL_SYMBOL
+            end
             table.insert(newValues, value)
         end
         tree:Subscribe(keyList, closure)
@@ -43,11 +46,20 @@ return function()
                 local valueList = {...}
                 expect(#newValues).to.equal(n)
                 for i = 1, n do
-                    expectDeepEqual(expect, newValues[i], valueList[i])
+                    expectDeepEqual(
+                        expect,
+                        valueList[i],
+                        if newValues[i] == ListenerTree.NIL_SYMBOL
+                            then nil
+                            else newValues[i]
+                    )
                 end
             end,
             expectNoNewValues = function(expect: any)
                 expect(#newValues).to.equal(0)
+            end,
+            getNewValues = function()
+                return newValues
             end,
             clearValues = function()
                 newValues = {}
@@ -75,6 +87,9 @@ return function()
                 ) do
                     listener(value)
                 end
+            end,
+            Get = function()
+                return mockData
             end,
         }
     end
@@ -256,6 +271,55 @@ return function()
             trackerCurrencies.expectNoNewValues(expect)
             trackerCoins.expectNoNewValues(expect)
             trackerShards.expectNoNewValues(expect)
+            expect(tree._root.listenerSet).to.equal(nil)
+            expect(tree._root.children).to.equal(nil)
+        end)
+    end)
+
+    describe("FireAllListeners", function()
+        it("Should fire all listeners for redundant and non-redundant changes", function()
+            local trackerCurrencies = subscribeAndTrackCalls({"Currencies"})
+            local trackerCoins = subscribeAndTrackCalls({"Currencies", "Coins"})
+            local trackerNonexistent = subscribeAndTrackCalls({"Nonexistent"})
+            local trackerShards =
+                subscribeAndTrackCalls({"Currencies", "Shards"})
+            local mockSave = createMockSave()
+
+            mockSave.Set({"Currencies"}, {Coins = 10})
+            mockSave.Set({"Currencies"}, {Coins = 10, Shards = 20})
+            
+            trackerCurrencies.expectNewValues(expect,
+                {Coins = 10},
+                {Coins = 10, Shards = 20}
+            )
+            trackerCoins.expectNewValues(expect, 10)
+            trackerShards.expectNewValues(expect, 20)
+            trackerNonexistent.expectNoNewValues(expect)
+            
+            trackerCurrencies.clearValues()
+            trackerCoins.clearValues()
+            trackerShards.clearValues()
+            tree:FireAllListeners({Currencies = {Coins = 20, Shards = 20}})
+
+            trackerCurrencies.expectNewValues(expect, {Coins = 20, Shards = 20})
+            trackerCoins.expectNewValues(expect, 20)
+            trackerShards.expectNewValues(expect, 20)
+            trackerNonexistent.expectNewValues(expect, nil)
+
+            trackerCurrencies.clearValues()
+            trackerCoins.clearValues()
+            trackerShards.clearValues()
+            trackerNonexistent.clearValues()
+            trackerCurrencies.unsubscribe()
+            trackerCoins.unsubscribe()
+            trackerShards.unsubscribe()
+            trackerNonexistent.unsubscribe()
+            tree:FireAllListeners({Currencies = {Coins = 30, Shards = 20}})
+
+            trackerCurrencies.expectNoNewValues(expect)
+            trackerCoins.expectNoNewValues(expect)
+            trackerShards.expectNoNewValues(expect)
+            trackerNonexistent.expectNoNewValues(expect)
             expect(tree._root.listenerSet).to.equal(nil)
             expect(tree._root.children).to.equal(nil)
         end)
