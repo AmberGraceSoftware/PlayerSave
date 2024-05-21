@@ -57,10 +57,10 @@ return function()
         return tracker
     end
     local function createMockSave()
-        local mockData = {}
+        local mockData: {[string]: any} = {}
         return {
             Set = function(keyList: {string | number}, newValue: any)
-                local parentTable = mockData
+                local parentTable: {[string | number]: any} = mockData
                 for i = 1, #keyList - 1 do
                     local key = keyList[i]
                     parentTable[key] = parentTable[key] or {}
