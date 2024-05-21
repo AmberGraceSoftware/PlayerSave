@@ -215,9 +215,11 @@ function Save.__index.Set(
         if typeof(oldValue) == "table" then
             error("Attempt to set a table to itself at keypath "
                 .. SerializeUtil.KeyListToString(keyList)
-                .. "; this likely happened because data is being mutated. "
-                .. " You should always use :GetDeepCopy() or :SetDeepCopy() "
-                .. " when mutating data in a player's save!\nSee: ")
+                .. "!\nThis likely happened because data returend from "
+                .. "save:Get() is being mutated somewhere.\n"
+                .. "You should always use :GetDeepCopy() or :SetDeepCopy() "
+                .. "when mutating data in a player's save! See:\n"
+                .. "https://playersave.ambergracesoftware.com/docs/incorrect_api_usage#table-mutations")
         end
         return
     end
