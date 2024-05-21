@@ -55,3 +55,77 @@ print(#save:Get("Value2")) -- 1
 print(#myTable) -- 2
 ```
 :::
+
+## Unsecured Remotes
+
+One limitation of all player saving systems, which PlayerSave is by no means immune to, is the possibility of exploited data ending up in a player's save.
+
+Whenever you write code that listens to a RemoteEvent / RemoteFunction, you should ***never trust values sent from the client to the server!*** Failing to perform sanity checks on values sent by the client could result in exploits that remain in a player's save forever.
+
+:::caution
+Never trust values sent from the client to the server!
+
+**Unsecured Remote Example (using [Knit](https://sleitnick.github.io/Knit/)):**
+```lua
+function LevelUpService.Client:SpendExperienceShards(
+    player: Player,
+    amount: number
+)
+    local save = PlayerSave.Get(player)
+    save:Increment("ExperienceShards", -amount)
+    save:Increment("ExperienceLevel", amount)
+end
+```
+
+Exploiters are able to call any remote function with arbitrary arguments. Take a moment to consider what the net effect would be after making any of the following requests:
+```lua
+LevelUpService:SpendExperienceShards(-100000)
+LevelUpService:SpendExperienceShards(math.huge)
+LevelUpService:SpendExperienceShards(1/0)
+LevelUpService:SpendExperienceShards(0/0)
+LevelUpService:SpendExperienceShards(0.000001)
+LevelUpService:SpendExperienceShards(0)
+LevelUpService:SpendExperienceShards(Vector3.new(0.5, -1, 1 / 0))
+LevelUpService:SpendExperienceShards("Oops, I corrupted the save!")
+```
+:::
+
+:::info
+It's a good idea to perform sanity checks on values provided by the client that will end up in a player's save.
+
+**Example of a secured remote:**
+```lua
+function LevelUpService.Client:SpendExperienceShards(
+    player: Player,
+    amount: unknown -- Never assume the type of a value sent by a player!
+)
+    -- Loaded save check
+    local save = PlayerSave.GetLoaded(player)
+    if not save then
+        return
+    end
+    -- Type check
+    if typeof(amount) ~= "number" then
+        return
+    end
+    -- NaN check
+    if amount ~= amount then
+        return
+    end
+    -- Range check
+    local currentShards = save:Get("ExperienceShards", 0)
+    if amount < 1 or amount > currentShards then
+        return
+    end
+    -- Integer check
+    if amount ~= math.floor(amount) then
+        return
+    end
+
+    -- All sanity checks have passed! Now we are safe to edit the player's data.
+
+    save:Increment("ExperienceShards", -amount)
+    save:Increment("ExperienceLevel", amount)
+end
+```
+:::
