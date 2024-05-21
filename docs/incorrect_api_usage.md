@@ -35,3 +35,23 @@ local inventory = save:GetDeepCopy("Inventory", {})
 table.insert(inventory, "Sword") -- OK, since this is a deep copy of save data!
 save:Set("Inventory", inventory) -- OK!
 ```
+
+## Setting Mutable Tables in a Save
+
+:::info
+PlayerSave will automatically make deep copies of tables passed into [`save:Set()`](../api/Save#Set), or as a second argument (`defaultValue`) to [`save:Get()`](../api/Save#Get).
+
+This means you do not have to worry about mutating values that are later stored in a save.
+
+```lua
+local myTable = {}
+save:Set("Value1", myTable) -- OK
+table.insert(myTable, "Foo") -- OK; this will not affect Value1!
+save:Get("Value2", myTable) -- OK
+table.insert(myTable, "Fighters") -- OK; this will not affect Value1 or Value2!
+
+print(#save:Get("Value1")) -- 0
+print(#save:Get("Value2")) -- 1
+print(#myTable) -- 2
+```
+:::
