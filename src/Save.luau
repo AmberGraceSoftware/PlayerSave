@@ -14,6 +14,9 @@ export type DeepSelectionQuery = ListenerTree.DeepSelectionQuery
 local Save = {}
 Save.__index = {}
 
+--[=[
+    @class Save
+]=]
 function Save.new(player: Player)
     local self = {}
     self._safeToSave = true
@@ -42,6 +45,13 @@ function Save.__index.PlayerIsStillInGame(self: Save)
         and not self._closed
 end
 
+--[=[
+    @method Get
+    @within Save
+    @param keyPath KeyPath
+    @param defaultValue: any?
+    @return any
+]=]
 function Save.__index.Get(
     self: Save,
     keyPath: KeyPath,
@@ -135,6 +145,13 @@ local function checkKey(
             .. "; expected string or number!")
     end
 end
+
+--[=[
+    @method Set
+    @within Save
+    @param keyPath KeyPath
+    @param newValue any
+]=]
 function Save.__index.Set(
     self: Save,
     keyPath: KeyPath,
@@ -190,6 +207,20 @@ function Save.__index.Set(
     local finalKey = keyList[#keyList]
     local oldValue = rootTable[finalKey]
     checkKey(rootTable, finalKey, #keyList, keyList)
+
+    -- If the user called :Set() with the existing table as an argument, throw
+    -- an error; this means the user is mutating data that they shouldn't be
+    -- mutating.
+    if oldValue == newValue then
+        if typeof(oldValue) == "table" then
+            error("Attempt to set a table to itself at keypath "
+                .. SerializeUtil.KeyListToString(keyList)
+                .. "; this likely happened because data is being mutated. "
+                .. " You should always use :GetDeepCopy() or :SetDeepCopy() "
+                .. " when mutating data in a player's save!\nSee: ")
+        end
+        return
+    end
 
     -- If we're setting the newValue to nil, throw an error if this cuts
     -- an array in the middle
@@ -537,6 +568,14 @@ function Save.__index.ListSwapRemove(
     return valueToRemove
 end
 
+--[=[
+    @method Subscribe
+    @within Save
+    @param keyPath KeyPath
+    @param listener (value: any) -> ()
+    @param immediatelyCallListener boolean?
+    @return () -> ()
+]=]
 function Save.__index.Subscribe(
     self: Save,
     keyPath: KeyPath,
