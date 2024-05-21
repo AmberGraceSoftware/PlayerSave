@@ -257,7 +257,7 @@ function Save.__index.Set(
         end
     else
         for listener, value in listenersHit do
-            listener(value)
+            listener(if value == ListenerTree.NIL_SYMBOL then nil else value)
         end
     end
     if self._deferredKeypathListenerMap then
@@ -399,6 +399,11 @@ function Save.__index.SetInSelection(
     end
 
     local keyListsChanged = {}
+    local listenersHit = self._listenerTree:GetListenersHitInSelection(
+        query,
+        newValues,
+        self._data
+    )
     for rootKey in newValues do
         setDataInSelection(
             self._data,
@@ -410,10 +415,6 @@ function Save.__index.SetInSelection(
             shouldValidateData
         )
     end
-    local listenersHit = self._listenerTree:GetListenersHitInSelection(
-        query,
-        self._data
-    )
     local keyListListenersHit = {}
     for listener in self._anyKeypathListeners do
         table.insert(keyListListenersHit, listener)
@@ -425,7 +426,7 @@ function Save.__index.SetInSelection(
         end
     else
         for listener, value in listenersHit do
-            listener(value)
+            listener(if value == ListenerTree.NIL_SYMBOL then nil else value)
         end
     end
     if self._deferredKeypathListenerMap then
@@ -666,7 +667,7 @@ function Save.__index.DeferListeners(self: Save, scopeCallback: () -> ())
     self._deferredListenerMap = nil
     self._deferredKeypathListenerMap = nil
     for listener, value in valueListenerMap do
-        listener(value)
+        listener(if value == ListenerTree.NIL_SYMBOL then nil else value)
     end
     for listener, keyList in keyListListenerMap do
         listener(keyList)
