@@ -9,8 +9,8 @@ export type KeyPath = string | {string | number}
 
 local SerializeUtil = {}
 
-local function deepCopyTable(table: {[any]: any})
-    local newTable = table.clone(table)
+local function deepCopyTable(tableToCopy: {[any]: any})
+    local newTable = table.clone(tableToCopy)
     for key, value in newTable do
         if typeof(value) == "table" then
             newTable[key] = deepCopyTable(value)
