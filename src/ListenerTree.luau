@@ -108,7 +108,7 @@ function ListenerTree.__index.Unsubscribe(
 
     -- Continue removing nodes down the chain if no listeners/children are
     -- defined
-    for i = #nodesHit, 2, -1 do
+    for i = #nodesHit - 1, 2, -1 do
         local node = nodesHit[i]
         if next(node.children :: {[any]: Node}) then
             return
