@@ -174,22 +174,27 @@ local function addChildListenersIfDifferent(
     
     -- Else, add all listeners for this ancestor, and diff children recursively
     for key, childNode in node.children do
-        local childValue = if typeof(newValue) == "table"
-            then newValue[key]
-            else nil
-        if childNode.listenerSet then
-            for listener in childNode.listenerSet do
-                outputMap[listener] = childValue
-            end
-        end
         local nextOldValue = if bothValuesAreTable
             then oldValue[key]
             else true
         local nextNewValue = if bothValuesAreTable
             then newValue[key]
             else false
-        addChildListenersIfDifferent(outputMap, childNode, nextOldValue,
-            nextNewValue)
+        if typeof(nextOldValue) ~= typeof(nextOldValue)
+        or (
+            (nextOldValue ~= nextNewValue)
+            and typeof(nextNewValue ~= "table")
+        ) then
+            if childNode.listenerSet then
+                for listener in childNode.listenerSet do
+                    outputMap[listener] = nextNewValue
+                end
+            end
+            addAllChildListeners(outputMap, childNode, nextNewValue)
+        else
+            addChildListenersIfDifferent(outputMap, childNode, nextOldValue,
+                nextNewValue)
+        end
     end
 end
 function ListenerTree.__index.GetListenersHit(
