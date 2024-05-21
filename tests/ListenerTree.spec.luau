@@ -54,18 +54,15 @@ return function()
                             else newValues[i]
                     )
                 end
+                newValues = {}
             end,
             expectNoNewValues = function(expect: any)
                 expect(#newValues).to.equal(0)
-            end,
-            getNewValues = function()
-                return newValues
-            end,
-            clearValues = function()
                 newValues = {}
             end,
             unsubscribe = function()
                 tree:Unsubscribe(keyList, closure)
+                newValues = {}
             end,
         }
         return tracker
@@ -104,13 +101,11 @@ return function()
             trackerCoins.expectNewValues(expect, 10)
             trackerName.expectNoNewValues(expect)
 
-            trackerCoins.clearValues()
             mockSave.Set({"Name"}, "Bob")
 
             trackerCoins.expectNoNewValues(expect)
             trackerName.expectNewValues(expect, "Bob")
 
-            trackerName.clearValues()
             trackerCoins.unsubscribe()
             trackerName.unsubscribe()
 
@@ -139,9 +134,6 @@ return function()
             trackerCoins.expectNewValues(expect, 10)
             trackerShards.expectNewValues(expect, 20)
 
-            trackerCurrencies.clearValues()
-            trackerCoins.clearValues()
-            trackerShards.clearValues()
             trackerShards.unsubscribe()
             trackerCurrencies.unsubscribe()
             mockSave.Set({"Currencies", "Shards"}, 30)
@@ -151,7 +143,6 @@ return function()
             trackerCoins.expectNewValues(expect, 40)
             trackerShards.expectNoNewValues(expect)
 
-            trackerCoins.clearValues()
             trackerCoins.unsubscribe()
             mockSave.Set({"Currencies", "Coins"}, 50)
             mockSave.Set({"Currencies", "Shards"}, 60)
@@ -177,9 +168,6 @@ return function()
             trackerCoins.expectNewValues(expect, 10, 20)
             trackerShards.expectNewValues(expect, 20)
 
-            trackerCurrencies.clearValues()
-            trackerCoins.clearValues()
-            trackerShards.clearValues()
             trackerShards.unsubscribe()
             trackerCurrencies.unsubscribe()
             mockSave.Set({"Currencies"}, {Shards = 30, Coins = 40})
@@ -188,7 +176,6 @@ return function()
             trackerCoins.expectNewValues(expect, 40)
             trackerShards.expectNoNewValues(expect)
 
-            trackerCoins.clearValues()
             trackerCoins.unsubscribe()
             mockSave.Set({"Currencies"}, {Shards = 50, Coins = 60})
 
@@ -210,8 +197,6 @@ return function()
             trackerCoins.expectNewValues(expect, 10)
             trackerName.expectNewValues(expect, "Joey")
 
-            trackerCoins.clearValues()
-            trackerName.clearValues()
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Name"}, "Joey")
 
@@ -247,9 +232,6 @@ return function()
             trackerCoins.expectNewValues(expect, 10)
             trackerShards.expectNewValues(expect, 20)
 
-            trackerCurrencies.clearValues()
-            trackerCoins.clearValues()
-            trackerShards.clearValues()
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Currencies", "Shards"}, 20)
 
@@ -296,9 +278,6 @@ return function()
             trackerShards.expectNewValues(expect, 20)
             trackerNonexistent.expectNoNewValues(expect)
             
-            trackerCurrencies.clearValues()
-            trackerCoins.clearValues()
-            trackerShards.clearValues()
             tree:FireAllListeners({Currencies = {Coins = 20, Shards = 20}})
 
             trackerCurrencies.expectNewValues(expect, {Coins = 20, Shards = 20})
@@ -306,10 +285,6 @@ return function()
             trackerShards.expectNewValues(expect, 20)
             trackerNonexistent.expectNewValues(expect, nil)
 
-            trackerCurrencies.clearValues()
-            trackerCoins.clearValues()
-            trackerShards.clearValues()
-            trackerNonexistent.clearValues()
             trackerCurrencies.unsubscribe()
             trackerCoins.unsubscribe()
             trackerShards.unsubscribe()
