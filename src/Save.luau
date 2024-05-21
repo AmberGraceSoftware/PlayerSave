@@ -270,13 +270,6 @@ function Save.__index.Set(
         end
     end
 end
-function Save.__index.SetDeepCopy(
-    self: Save,
-    keyPath: KeyPath,
-    value: any
-)
-    self:Set(keyPath, SerializeUtil.DeepCopyValue(value))
-end
 
 local function setDataInSelection(
     parentDataTable: {[string | number]: any},
