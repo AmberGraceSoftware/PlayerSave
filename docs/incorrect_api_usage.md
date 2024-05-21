@@ -5,7 +5,7 @@ sidebar_position: 3
 
 PlayerSave's API has a few key limitations to look out for!
 
-# Table Mutations
+## Table Mutations
 
 One core feature of PlayerSave is that all changes to player save data are [Observable](../api/Save#Subscribe). This is achieved by only allowing data to be changed in a player's save via [Setter methods](../api/Save#Set).
 
@@ -15,7 +15,7 @@ One core feature of PlayerSave is that all changes to player save data are [Obse
 You should never directly edit a table returned by [`save:Get()`](../api/Save#Get)! For example:
 
 ```lua
-local inventory = save:Get("Inventory")
+local inventory = save:Get("Inventory", {})
 table.insert(inventory, "Sword") -- Incorrect! `inventory` should not be mutated
 save:Set("Inventory", inventory) -- Will throw an error.
 ```
@@ -31,7 +31,7 @@ save:ListInsert("Inventory", "Sword)
 
 If your use case is not covered by methods like [`save:ListInsert()`](../api/Save#ListInsert), [`save:ListRemove()`](../api/Save#ListRemove), or [`save:ListSwapRemove()`](../api/Save#ListSwapRemove), you can use the method [`save:GetDeepCopy()`](../api/Save#GetDeepCopy) to get a copy of a saved value which is safe to mutate:
 ```lua
-local inventory = save:GetDeepCopy("Inventory")
+local inventory = save:GetDeepCopy("Inventory", {})
 table.insert(inventory, "Sword") -- OK, since this is a deep copy of save data!
 save:Set("Inventory", inventory) -- OK!
 ```

@@ -217,11 +217,14 @@ function Save.__index.Set(
                 .. SerializeUtil.KeyListToString(keyList)
                 .. "!\nThis likely happened because data returend from "
                 .. "save:Get() is being mutated somewhere.\n"
-                .. "You should always use :GetDeepCopy() or :SetDeepCopy() "
-                .. "when mutating data in a player's save! See:\n"
+                .. "You should always use :GetDeepCopy() when mutating a value"
+                .. "in a player's save! See:\n"
                 .. "https://playersave.ambergracesoftware.com/docs/incorrect_api_usage#table-mutations")
         end
         return
+    else
+        -- Deep copy any newly-added tables to prevent mutation.
+        newValue = SerializeUtil.DeepCopyValue(newValue)
     end
 
     -- If we're setting the newValue to nil, throw an error if this cuts
