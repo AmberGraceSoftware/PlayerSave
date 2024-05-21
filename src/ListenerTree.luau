@@ -108,20 +108,24 @@ function ListenerTree.__index.Unsubscribe(
 
     -- Continue removing nodes down the chain if no listeners/children are
     -- defined
-    for i = #nodesHit - 1, 2, -1 do
+    for i = #nodesHit - 1, 1, -1 do
         local node = nodesHit[i]
         if next(node.children :: {[any]: Node}) then
-            return
+            break
         end
+        node.children = nil
         if node.listenerSet then
-            return
+            break
+        end
+        if i == 1 then
+            break
         end
         local prevNode = nodesHit[i - 1]
         local key = keyList[i - 1]
         local prevChildren = prevNode.children :: ChildMap
         prevChildren[key] = nil
         if next(prevChildren) then
-            return
+            break
         end
     end
 end
@@ -204,9 +208,6 @@ function ListenerTree.__index.GetListenersHit(
     local currentNode = self._root
     local currentData: {[string | number]: any} = allData
     for _, key in keyList do
-        currentData = if typeof(currentData) == "table"
-            then currentData[key]
-            else nil
         if currentNode.listenerSet then
             for listener in currentNode.listenerSet do
                 listenersHit[listener] = currentData
@@ -217,6 +218,9 @@ function ListenerTree.__index.GetListenersHit(
             if not currentNode then
                 return listenersHit
             end
+            currentData = if typeof(currentData) == "table"
+                then currentData[key]
+                else nil
         else
             return listenersHit
         end
