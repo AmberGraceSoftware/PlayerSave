@@ -107,14 +107,12 @@ return function()
             expect(tree._root.children).to.equal(nil)
         end)
 
-        it("should subscribe/unsubscribe nested keypaths", function()
+        it("should subscribe an ancestor to descendant changes", function()
             local trackerCurrencies = subscribeAndTrackCalls({"Currencies"})
             local trackerCoins = subscribeAndTrackCalls({"Currencies", "Coins"})
             local trackerShards =
                 subscribeAndTrackCalls({"Currencies", "Shards"})
             local mockSave = createMockSave()
-
-            print(tree._root)
 
             mockSave.Set({"Currencies", "Coins"}, 10)
             mockSave.Set({"Currencies", "Shards"}, 20)
@@ -146,6 +144,49 @@ return function()
             trackerCoins.unsubscribe()
             mockSave.Set({"Currencies", "Coins"}, 50)
             mockSave.Set({"Currencies", "Shards"}, 60)
+
+            trackerCurrencies.expectCallCount(expect, 0)
+            trackerCoins.expectCallCount(expect, 0)
+            trackerShards.expectCallCount(expect, 0)
+            expect(tree._root.listenerSet).to.equal(nil)
+            expect(tree._root.children).to.equal(nil)
+        end)
+
+        it("should subscribe a descendant to ancestor changes", function()
+            local trackerCurrencies = subscribeAndTrackCalls({"Currencies"})
+            local trackerCoins = subscribeAndTrackCalls({"Currencies", "Coins"})
+            local trackerShards =
+                subscribeAndTrackCalls({"Currencies", "Shards"})
+            local mockSave = createMockSave()
+
+            mockSave.Set({"Currencies"}, {Coins = 10})
+            mockSave.Set({"Currencies"}, {Coins = 20, Shards = 20})
+            
+            trackerCurrencies.expectCallCount(expect, 2)
+            trackerCurrencies.expectValues(expect,{
+                {Coins = 10},
+                {Coins = 20, Shards = 20}
+            })
+            trackerCoins.expectCallCount(expect, 2)
+            trackerCoins.expectValues(expect, {10, 20})
+            trackerShards.expectCallCount(expect, 1)
+            trackerShards.expectValues(expect, {20})
+            trackerCurrencies.clearValues()
+            trackerCoins.clearValues()
+            trackerShards.clearValues()
+
+            trackerShards.unsubscribe()
+            trackerCurrencies.unsubscribe()
+            mockSave.Set({"Currencies"}, {Shards = 30, Coins = 40})
+
+            trackerCurrencies.expectCallCount(expect, 0)
+            trackerCoins.expectCallCount(expect, 1)
+            trackerCoins.expectValues(expect, {40})
+            trackerShards.expectCallCount(expect, 0)
+            trackerCoins.clearValues()
+
+            trackerCoins.unsubscribe()
+            mockSave.Set({"Currencies"}, {Shards = 50, Coins = 60})
 
             trackerCurrencies.expectCallCount(expect, 0)
             trackerCoins.expectCallCount(expect, 0)
