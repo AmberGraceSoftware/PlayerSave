@@ -1,8 +1,7 @@
 --!strict
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Save = require(ReplicatedStorage.Packages.PlayerSave.Save)
+local Save = require(script.Parent.Save)
 export type Save = Save.Save
 
 local Registry = {}

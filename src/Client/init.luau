@@ -1,8 +1,7 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RegistryClient = require(script.Mechanisms.RegistryClient)
 local ReplicationClient = require(script.Mechanisms.ReplicationClient)
-local Registry = require(ReplicatedStorage.Packages.PlayerSave.Registry)
+local Registry = require(script.Parent.Registry)
 export type Registry = Registry.Registry
 
 local PlayerSaveClient = {}
