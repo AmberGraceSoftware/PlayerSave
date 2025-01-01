@@ -24,16 +24,20 @@ end
 export type Registry = typeof(Registry.new())
 
 function Registry.__index.StartHeartbeatLoop(self: Registry)
-    RunService.Heartbeat:Connect(function()
+    if self._heartbeatConn then
+        return
+    end
+    self._heartbeatConn = RunService.Heartbeat:Connect(function()
         self._onRegistryInsertOrHeartbeat:Fire()
     end)
 end
 
 function Registry.__index.StopHeartbeatLoop(self: Registry)
-    if self._heartbeatConn then
-        self._heartbeatConn:Disconnect()
-        self._heartbeatConn = nil
+    if not self._heartbeatConn then
+        return
     end
+    self._heartbeatConn:Disconnect()
+    self._heartbeatConn = nil
 end
 
 function Registry.__index.OpenSave(
